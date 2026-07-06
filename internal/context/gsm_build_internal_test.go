@@ -8,6 +8,7 @@ import (
 
 	"github.com/free5gc/nas"
 	"github.com/free5gc/nas/nasMessage"
+	"github.com/free5gc/nas/nasType"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/util/idgenerator"
 )
@@ -41,6 +42,122 @@ func newGSMTestContext() *SMContext {
 		PacketFilterIDGenerator:      idgenerator.NewGenerator(1, 255),
 		PCCRuleIDToQoSRuleID:         map[string]uint8{},
 		PacketFilterIDToNASPFID:      map[string]uint8{},
+	}
+}
+
+func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
+	testCases := []struct {
+		name         string
+		setupContext func() *SMContext
+		wantCause    uint8 // 0 = Cause5GSM IE absent
+		wantQoSRules int
+		golden       []byte
+	}{
+		{
+			name:         "Minimal",
+			setupContext: newGSMTestContext,
+			wantCause:    0,
+			wantQoSRules: 1,
+			golden: []byte{
+				0x2e, 0x0a, 0x01, 0xc2, 0x11, 0x00, 0x09, 0x01, 0x00, 0x06, 0x31, 0x31,
+				0x01, 0x01, 0xff, 0x01, 0x06, 0x01, 0x00, 0x64, 0x01, 0x00, 0xc8, 0x29,
+				0x05, 0x01, 0x0a, 0x3c, 0x00, 0x01, 0x22, 0x04, 0x01, 0x11, 0x22, 0x32,
+				0x79, 0x00, 0x06, 0x01, 0x20, 0x41, 0x01, 0x01, 0x09, 0x25, 0x09, 0x08,
+				0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74,
+			},
+		},
+		{
+			name: "Full",
+			setupContext: func() *SMContext {
+				smContext := newGSMTestContext()
+				smContext.EstAcceptCause5gSMValue = nasMessage.Cause5GSMPDUSessionTypeIPv4OnlyAllowed
+				// exactly ONE PCC rule / ONE additional QoS flow: two or more
+				// makes the golden unstable (map iteration + rule ID allocation)
+				smContext.PCCRules = map[string]*PCCRule{
+					"PccRuleId-1": {
+						PccRule: &models.PccRule{
+							PccRuleId:  "PccRuleId-1",
+							Precedence: 200,
+							FlowInfos: []models.FlowInformation{{
+								FlowDescription: "permit out ip from any to assigned",
+								PackFiltId:      "PackFiltId-1",
+								FlowDirection:   models.FlowDirection_BIDIRECTIONAL,
+							}},
+						},
+						QFI: 2,
+					},
+				}
+				smContext.AdditionalQosFlows = map[uint8]*QoSFlow{
+					2: NewQoSFlow(2, &models.QosData{
+						Var5qi: 9,
+						Arp: &models.Arp{
+							PriorityLevel: 8,
+							PreemptCap:    models.PreemptionCapability_NOT_PREEMPT,
+							PreemptVuln:   models.PreemptionVulnerability_NOT_PREEMPTABLE,
+						},
+					}),
+				}
+				smContext.ProtocolConfigurationOptions = &ProtocolConfigurationOptions{
+					DNSIPv4Request:     true,
+					IPv4LinkMTURequest: true,
+				}
+				smContext.DNNInfo = &SnssaiSmfDnnInfo{
+					DNS: DNS{IPv4Addr: net.ParseIP("8.8.8.8").To4()},
+				}
+				return smContext
+			},
+			wantCause:    nasMessage.Cause5GSMPDUSessionTypeIPv4OnlyAllowed,
+			wantQoSRules: 2,
+			golden: []byte{
+				0x2e, 0x0a, 0x01, 0xc2, 0x11, 0x00, 0x12, 0x01, 0x00, 0x06, 0x31, 0x31,
+				0x01, 0x01, 0xff, 0x01, 0x02, 0x00, 0x06, 0x21, 0x31, 0x01, 0x01, 0xc8,
+				0x02, 0x06, 0x01, 0x00, 0x64, 0x01, 0x00, 0xc8, 0x59, 0x32, 0x29, 0x05,
+				0x01, 0x0a, 0x3c, 0x00, 0x01, 0x22, 0x04, 0x01, 0x11, 0x22, 0x32, 0x79,
+				0x00, 0x0c, 0x01, 0x20, 0x41, 0x01, 0x01, 0x09, 0x02, 0x20, 0x41, 0x01,
+				0x01, 0x09, 0x7b, 0x00, 0x0d, 0x80, 0x00, 0x0d, 0x04, 0x08, 0x08, 0x08,
+				0x08, 0x00, 0x10, 0x02, 0x05, 0x78, 0x25, 0x09, 0x08, 0x69, 0x6e, 0x74,
+				0x65, 0x72, 0x6e, 0x65, 0x74,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			smContext := tc.setupContext()
+
+			got, err := BuildGSMPDUSessionEstablishmentAccept(smContext)
+			require.NoError(t, err)
+
+			// double-encode guard needs a fresh context: the builder allocates
+			// QoS rule IDs from QoSRuleIDGenerator on every call
+			got2, err := BuildGSMPDUSessionEstablishmentAccept(tc.setupContext())
+			require.NoError(t, err)
+			require.Equal(t, got, got2)
+
+			require.Equal(t, tc.golden, got)
+
+			m := nas.NewMessage()
+			golden := tc.golden
+			require.NoError(t, m.GsmMessageDecode(&golden))
+			accept := m.PDUSessionEstablishmentAccept
+			require.Equal(t, nas.MsgTypePDUSessionEstablishmentAccept, m.GsmHeader.GetMessageType())
+			require.Equal(t, uint8(1), accept.GetPTI())
+			require.Equal(t, uint8(10), accept.GetPDUSessionID())
+
+			addr := accept.PDUAddress.GetPDUAddressInformation()
+			require.Equal(t, []byte(net.ParseIP("10.60.0.1").To4()), addr[:4])
+
+			var qosRules nasType.QoSRules
+			require.NoError(t, qosRules.UnmarshalBinary(accept.AuthorizedQosRules.GetQosRule()))
+			require.Len(t, qosRules, tc.wantQoSRules)
+
+			if tc.wantCause == 0 {
+				require.Nil(t, accept.Cause5GSM)
+			} else {
+				require.NotNil(t, accept.Cause5GSM)
+				require.Equal(t, tc.wantCause, accept.Cause5GSM.GetCauseValue())
+			}
+		})
 	}
 }
 
