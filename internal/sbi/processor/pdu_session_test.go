@@ -14,9 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/free5gc/nas"
-	"github.com/free5gc/nas/nasMessage"
-	"github.com/free5gc/nas/nasType"
+	nasie "github.com/free5gc/nas/ie"
+	"github.com/free5gc/nas/message"
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
 	smf_context "github.com/free5gc/smf/internal/context"
@@ -375,22 +374,17 @@ func initStubPFCP() {
 }
 
 func buildPDUSessionEstablishmentRequest(pduSessID uint8, pti uint8, pduType uint8) []byte {
-	msg := nas.NewMessage()
-	msg.GsmMessage = nas.NewGsmMessage()
-	msg.GsmMessage.PDUSessionEstablishmentRequest = nasMessage.NewPDUSessionEstablishmentRequest(0)
-	msg.GsmHeader.SetMessageType(nas.MsgTypePDUSessionEstablishmentRequest)
-	msg.GsmHeader.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSSessionManagementMessage)
+	pduEstReq := &message.PDUSessEstReq{
+		PDUSessId: pduSessID,
+		PTI:       pti,
+		IntegrityProtectionMaxDataRate: &nasie.IntegrityProtectionMaxDataRate{
+			Uplink:   0xff,
+			Downlink: 0xff,
+		},
+		PDUSessType: &nasie.PDUSessType{Value: pduType},
+	}
 
-	pduEstReq := msg.GsmMessage.PDUSessionEstablishmentRequest
-	// Set GSM Message
-	pduEstReq.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSSessionManagementMessage)
-	pduEstReq.SetPDUSessionID(pduSessID)
-	pduEstReq.SetPTI(pti)
-	pduEstReq.SetMessageType(nas.MsgTypePDUSessionEstablishmentRequest)
-	pduEstReq.PDUSessionType = nasType.NewPDUSessionType(nasMessage.PDUSessionEstablishmentRequestPDUSessionTypeType)
-	pduEstReq.PDUSessionType.SetPDUSessionTypeValue(pduType)
-
-	if b, err := msg.PlainNasEncode(); err != nil {
+	if b, err := pduEstReq.MarshalBinary(); err != nil {
 		panic(err)
 	} else {
 		return b
@@ -398,20 +392,12 @@ func buildPDUSessionEstablishmentRequest(pduSessID uint8, pti uint8, pduType uin
 }
 
 func buildPDUSessionModificationRequest(pduSessID uint8, pti uint8) []byte {
-	msg := nas.NewMessage()
-	msg.GsmMessage = nas.NewGsmMessage()
-	msg.GsmMessage.PDUSessionModificationRequest = nasMessage.NewPDUSessionModificationRequest(0)
-	msg.GsmHeader.SetMessageType(nas.MsgTypePDUSessionModificationRequest)
-	msg.GsmHeader.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSSessionManagementMessage)
+	pduModReq := &message.PDUSessModReq{
+		PDUSessId: pduSessID,
+		PTI:       pti,
+	}
 
-	pduModReq := msg.GsmMessage.PDUSessionModificationRequest
-	// Set GSM Message
-	pduModReq.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSSessionManagementMessage)
-	pduModReq.SetPDUSessionID(pduSessID)
-	pduModReq.SetPTI(pti)
-	pduModReq.SetMessageType(nas.MsgTypePDUSessionModificationRequest)
-
-	if b, err := msg.PlainNasEncode(); err != nil {
+	if b, err := pduModReq.MarshalBinary(); err != nil {
 		panic(err)
 	} else {
 		return b
@@ -419,21 +405,13 @@ func buildPDUSessionModificationRequest(pduSessID uint8, pti uint8) []byte {
 }
 
 func buildPDUSessionEstablishmentReject(pduSessID uint8, pti uint8, cause uint8) []byte {
-	msg := nas.NewMessage()
-	msg.GsmMessage = nas.NewGsmMessage()
-	msg.GsmMessage.PDUSessionEstablishmentReject = nasMessage.NewPDUSessionEstablishmentReject(0)
-	msg.GsmHeader.SetMessageType(nas.MsgTypePDUSessionEstablishmentReject)
-	msg.GsmHeader.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSSessionManagementMessage)
+	pduEstRej := &message.PDUSessEstRej{
+		PDUSessId: pduSessID,
+		PTI:       pti,
+		Cause5GSM: &nasie.Cause5GSM{Value: cause},
+	}
 
-	pduEstRej := msg.GsmMessage.PDUSessionEstablishmentReject
-	// Set GSM Message
-	pduEstRej.SetExtendedProtocolDiscriminator(nasMessage.Epd5GSSessionManagementMessage)
-	pduEstRej.SetPDUSessionID(pduSessID)
-	pduEstRej.SetPTI(pti)
-	pduEstRej.SetMessageType(nas.MsgTypePDUSessionEstablishmentReject)
-	pduEstRej.Cause5GSM.SetCauseValue(cause)
-
-	if b, err := msg.PlainNasEncode(); err != nil {
+	if b, err := pduEstRej.MarshalBinary(); err != nil {
 		panic(err)
 	} else {
 		return b
@@ -509,7 +487,7 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 						Mnc: "93",
 					},
 				},
-				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, 2, nasMessage.PDUSessionTypeIPv6),
+				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, 2, nasie.PDUSessType_IPv6),
 			},
 			paramStr:     "try request the IPv6 PDU session\n",
 			resultStr:    "Reject IPv6 PDU Session and respond error\n",
@@ -528,7 +506,7 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 						N1SmMsg: &models.RefToBinaryData{ContentId: "n1SmMsg"},
 					},
 					BinaryDataN1SmMessage: buildPDUSessionEstablishmentReject(
-						10, 2, nasMessage.Cause5GSMPDUSessionTypeIPv4OnlyAllowed),
+						10, 2, nasie.Cause5GSM_PDUSessTypeIpv4OnlyAllowed),
 				},
 			},
 		},
@@ -562,7 +540,7 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 						Mnc: "93",
 					},
 				},
-				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, 3, nasMessage.PDUSessionTypeIPv4),
+				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, 3, nasie.PDUSessType_IPv4),
 			},
 			paramStr:     "input correct PostSmContexts Request\n",
 			resultStr:    "PDUSessionSMContextCreate should pass\n",
@@ -745,7 +723,7 @@ func TestHandlePDUSessionSMContextCreate_InvalidDnnSnssaiInputs(t *testing.T) {
 						Mnc: "93",
 					},
 				},
-				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, tc.input.pti, nasMessage.PDUSessionTypeIPv4),
+				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, tc.input.pti, nasie.PDUSessType_IPv4),
 			}
 
 			processor.HandlePDUSessionSMContextCreate(c, request, nil)
@@ -770,7 +748,7 @@ func TestHandlePDUSessionSMContextCreate_InvalidDnnSnssaiInputs(t *testing.T) {
 			require.Equal(t, PDUSession_errors.DnnNotSupported.Status, actual.JsonData.Error.Status)
 			require.NotNil(t, actual.BinaryDataN1SmMessage)
 			require.Equal(t,
-				buildPDUSessionEstablishmentReject(10, 0, nasMessage.Cause5GSMRequestRejectedUnspecified),
+				buildPDUSessionEstablishmentReject(10, 0, nasie.Cause5GSM_ReqRejected),
 				actual.BinaryDataN1SmMessage,
 			)
 		})

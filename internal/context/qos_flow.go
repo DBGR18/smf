@@ -1,9 +1,9 @@
 package context
 
 import (
-	"github.com/free5gc/aper"
-	"github.com/free5gc/nas/nasType"
-	"github.com/free5gc/ngap/ngapType"
+	nasie "github.com/free5gc/nas/ie"
+	"github.com/free5gc/ngap/aper"
+	ngapie "github.com/free5gc/ngap/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/smf/internal/util"
 )
@@ -52,31 +52,19 @@ func (q *QoSFlow) IsGBRFlow() bool {
 	return isGBRFlow(q.QoSProfile)
 }
 
-func (q *QoSFlow) BuildNasQoSDesc(opCode nasType.QoSFlowOperationCode) (nasType.QoSFlowDesc, error) {
-	qosDesc := nasType.QoSFlowDesc{}
-	qosDesc.QFI = q.GetQFI()
-	qosDesc.OperationCode = opCode
-	parameter := new(nasType.QoSFlow5QI)
-	parameter.FiveQI = uint8(q.QoSProfile.Var5qi)
-	qosDesc.Parameters = append(qosDesc.Parameters, parameter)
+func (q *QoSFlow) BuildNasQoSDesc(opCode nasie.QfdOpCode) (nasie.QosFlowDesc, error) {
+	qosDesc := nasie.QosFlowDesc{
+		QFI:    q.GetQFI(),
+		OpCode: opCode,
+		EBit:   nasie.QfdEbit_HasParamList,
+		FiveQI: uint8(q.QoSProfile.Var5qi),
+	}
 
 	if q.IsGBRFlow() && q.QoSProfile != nil {
-		gbrDlParameter := new(nasType.QoSFlowGFBRDownlink)
-		gbrDlParameter.Unit = nasType.QoSFlowBitRateUnit1Mbps
-		gbrDlParameter.Value = util.BitRateTombps(q.QoSProfile.GbrDl)
-		qosDesc.Parameters = append(qosDesc.Parameters, gbrDlParameter)
-		gbrUlParameter := new(nasType.QoSFlowGFBRUplink)
-		gbrUlParameter.Unit = nasType.QoSFlowBitRateUnit1Mbps
-		gbrUlParameter.Value = util.BitRateTombps(q.QoSProfile.GbrUl)
-		qosDesc.Parameters = append(qosDesc.Parameters, gbrUlParameter)
-		mbrDlParameter := new(nasType.QoSFlowMFBRDownlink)
-		mbrDlParameter.Unit = nasType.QoSFlowBitRateUnit1Mbps
-		mbrDlParameter.Value = util.BitRateTombps(q.QoSProfile.MaxbrDl)
-		qosDesc.Parameters = append(qosDesc.Parameters, mbrDlParameter)
-		mbrUlParameter := new(nasType.QoSFlowMFBRUplink)
-		mbrUlParameter.Unit = nasType.QoSFlowBitRateUnit1Mbps
-		mbrUlParameter.Value = util.BitRateTombps(q.QoSProfile.MaxbrUl)
-		qosDesc.Parameters = append(qosDesc.Parameters, mbrUlParameter)
+		qosDesc.GFBRDownlink = q.QoSProfile.GbrDl
+		qosDesc.GFBRUplink = q.QoSProfile.GbrUl
+		qosDesc.MFBRDownlink = q.QoSProfile.MaxbrDl
+		qosDesc.MFBRUplink = q.QoSProfile.MaxbrUl
 	}
 	return qosDesc, nil
 }
@@ -92,49 +80,47 @@ func buildArpFromModels(arp *models.Arp) (int64, aper.Enumerated, aper.Enumerate
 	arpPriorityLevel = int64(arp.PriorityLevel)
 	switch arp.PreemptCap {
 	case models.PreemptionCapability_NOT_PREEMPT:
-		arpPreEmptionCapability = ngapType.PreEmptionCapabilityPresentShallNotTriggerPreEmption
+		arpPreEmptionCapability = ngapie.PreEmptionCapabilityPresentShallNotTriggerPreEmption
 	case models.PreemptionCapability_MAY_PREEMPT:
-		arpPreEmptionCapability = ngapType.PreEmptionCapabilityPresentMayTriggerPreEmption
+		arpPreEmptionCapability = ngapie.PreEmptionCapabilityPresentMayTriggerPreEmption
 	default:
-		arpPreEmptionCapability = ngapType.PreEmptionCapabilityPresentShallNotTriggerPreEmption
+		arpPreEmptionCapability = ngapie.PreEmptionCapabilityPresentShallNotTriggerPreEmption
 	}
 	switch arp.PreemptVuln {
 	case models.PreemptionVulnerability_NOT_PREEMPTABLE:
-		arpPreEmptionVulnerability = ngapType.PreEmptionVulnerabilityPresentNotPreEmptable
+		arpPreEmptionVulnerability = ngapie.PreEmptionVulnerabilityPresentNotPreEmptable
 	case models.PreemptionVulnerability_PREEMPTABLE:
-		arpPreEmptionVulnerability = ngapType.PreEmptionVulnerabilityPresentPreEmptable
+		arpPreEmptionVulnerability = ngapie.PreEmptionVulnerabilityPresentPreEmptable
 	default:
-		arpPreEmptionVulnerability = ngapType.PreEmptionVulnerabilityPresentNotPreEmptable
+		arpPreEmptionVulnerability = ngapie.PreEmptionVulnerabilityPresentNotPreEmptable
 	}
 
 	return arpPriorityLevel, arpPreEmptionCapability, arpPreEmptionVulnerability
 }
 
-func buildGBRQosInformationFromModel(qos *models.QosData) *ngapType.GBRQosInformation {
+func buildGBRQosInformationFromModel(qos *models.QosData) *ngapie.GBRQosInformation {
 	if qos == nil {
 		return nil
 	}
-	return &ngapType.GBRQosInformation{
-		MaximumFlowBitRateDL:    util.StringToBitRate(qos.MaxbrDl),
-		MaximumFlowBitRateUL:    util.StringToBitRate(qos.MaxbrUl),
-		GuaranteedFlowBitRateDL: util.StringToBitRate(qos.GbrDl),
-		GuaranteedFlowBitRateUL: util.StringToBitRate(qos.GbrUl),
+	maxFlowBitRateDL := util.StringToBitRate(qos.MaxbrDl)
+	maxFlowBitRateUL := util.StringToBitRate(qos.MaxbrUl)
+	guaranteedFlowBitRateDL := util.StringToBitRate(qos.GbrDl)
+	guaranteedFlowBitRateUL := util.StringToBitRate(qos.GbrUl)
+	return &ngapie.GBRQosInformation{
+		MaximumFlowBitRateDL:    &maxFlowBitRateDL,
+		MaximumFlowBitRateUL:    &maxFlowBitRateUL,
+		GuaranteedFlowBitRateDL: &guaranteedFlowBitRateDL,
+		GuaranteedFlowBitRateUL: &guaranteedFlowBitRateUL,
 	}
 }
 
-func (q *QoSFlow) BuildNgapQosFlowSetupRequestItem() (ngapType.QosFlowSetupRequestItem, error) {
-	qosDesc := ngapType.QosFlowSetupRequestItem{}
-
-	qosDesc.QosFlowIdentifier = ngapType.QosFlowIdentifier{
-		Value: int64(q.GetQFI()),
-	}
-
-	parameter := ngapType.QosFlowLevelQosParameters{}
-	parameter.QosCharacteristics = ngapType.QosCharacteristics{
-		Present: ngapType.QosCharacteristicsPresentNonDynamic5QI,
-		NonDynamic5QI: &ngapType.NonDynamic5QIDescriptor{
-			FiveQI: ngapType.FiveQI{
-				Value: int64(q.Get5QI()),
+func (q *QoSFlow) buildNgapQosFlowLevelQosParameters() *ngapie.QosFlowLevelQosParameters {
+	parameter := &ngapie.QosFlowLevelQosParameters{
+		QosCharacteristics: &ngapie.QosCharacteristics{
+			Choice: &ngapie.NonDynamic5QIDescriptor{
+				FiveQI: &ngapie.FiveQI{
+					Value: int64(q.Get5QI()),
+				},
 			},
 		},
 	}
@@ -153,75 +139,41 @@ func (q *QoSFlow) BuildNgapQosFlowSetupRequestItem() (ngapType.QosFlowSetupReque
 	} else {
 		// TODO: should get value from PCF
 		arpPriorityLevel = 8
-		arpPreEmptionCapability = ngapType.PreEmptionCapabilityPresentShallNotTriggerPreEmption
-		arpPreEmptionVulnerability = ngapType.PreEmptionVulnerabilityPresentNotPreEmptable
+		arpPreEmptionCapability = ngapie.PreEmptionCapabilityPresentShallNotTriggerPreEmption
+		arpPreEmptionVulnerability = ngapie.PreEmptionVulnerabilityPresentNotPreEmptable
 	}
 
-	parameter.AllocationAndRetentionPriority = ngapType.AllocationAndRetentionPriority{
-		PriorityLevelARP: ngapType.PriorityLevelARP{
+	parameter.AllocationAndRetentionPriority = &ngapie.AllocationAndRetentionPriority{
+		PriorityLevelARP: &ngapie.PriorityLevelARP{
 			Value: arpPriorityLevel,
 		},
-		PreEmptionCapability: ngapType.PreEmptionCapability{
+		PreEmptionCapability: &ngapie.PreEmptionCapability{
 			Value: arpPreEmptionCapability,
 		},
-		PreEmptionVulnerability: ngapType.PreEmptionVulnerability{
+		PreEmptionVulnerability: &ngapie.PreEmptionVulnerability{
 			Value: arpPreEmptionVulnerability,
 		},
 	}
 
-	qosDesc.QosFlowLevelQosParameters = parameter
+	return parameter
+}
 
+func (q *QoSFlow) BuildNgapQosFlowSetupRequestItem() (ngapie.QosFlowSetupRequestItem, error) {
+	qosDesc := ngapie.QosFlowSetupRequestItem{
+		QosFlowIdentifier: &ngapie.QosFlowIdentifier{
+			Value: int64(q.GetQFI()),
+		},
+		QosFlowLevelQosParameters: q.buildNgapQosFlowLevelQosParameters(),
+	}
 	return qosDesc, nil
 }
 
-func (q *QoSFlow) BuildNgapQosFlowAddOrModifyRequestItem() (ngapType.QosFlowAddOrModifyRequestItem, error) {
-	qosDesc := ngapType.QosFlowAddOrModifyRequestItem{}
-
-	qosDesc.QosFlowIdentifier = ngapType.QosFlowIdentifier{
-		Value: int64(q.GetQFI()),
-	}
-
-	parameter := ngapType.QosFlowLevelQosParameters{}
-	parameter.QosCharacteristics = ngapType.QosCharacteristics{
-		Present: ngapType.QosCharacteristicsPresentNonDynamic5QI,
-		NonDynamic5QI: &ngapType.NonDynamic5QIDescriptor{
-			FiveQI: ngapType.FiveQI{
-				Value: int64(q.Get5QI()),
-			},
+func (q *QoSFlow) BuildNgapQosFlowAddOrModifyRequestItem() (ngapie.QosFlowAddOrModifyRequestItem, error) {
+	qosDesc := ngapie.QosFlowAddOrModifyRequestItem{
+		QosFlowIdentifier: &ngapie.QosFlowIdentifier{
+			Value: int64(q.GetQFI()),
 		},
+		QosFlowLevelQosParameters: q.buildNgapQosFlowLevelQosParameters(),
 	}
-
-	if q.IsGBRFlow() {
-		parameter.GBRQosInformation = buildGBRQosInformationFromModel(q.QoSProfile)
-	}
-
-	var arpPriorityLevel int64
-	var arpPreEmptionCapability aper.Enumerated
-	var arpPreEmptionVulnerability aper.Enumerated
-	if arp := q.QoSProfile.Arp; arp != nil {
-		arpPriorityLevel,
-			arpPreEmptionCapability,
-			arpPreEmptionVulnerability = buildArpFromModels(arp)
-	} else {
-		// TODO: should get value from PCF
-		arpPriorityLevel = 8
-		arpPreEmptionCapability = ngapType.PreEmptionCapabilityPresentShallNotTriggerPreEmption
-		arpPreEmptionVulnerability = ngapType.PreEmptionVulnerabilityPresentNotPreEmptable
-	}
-
-	parameter.AllocationAndRetentionPriority = ngapType.AllocationAndRetentionPriority{
-		PriorityLevelARP: ngapType.PriorityLevelARP{
-			Value: arpPriorityLevel,
-		},
-		PreEmptionCapability: ngapType.PreEmptionCapability{
-			Value: arpPreEmptionCapability,
-		},
-		PreEmptionVulnerability: ngapType.PreEmptionVulnerability{
-			Value: arpPreEmptionVulnerability,
-		},
-	}
-
-	qosDesc.QosFlowLevelQosParameters = &parameter
-
 	return qosDesc, nil
 }

@@ -11,8 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/free5gc/nas"
-	"github.com/free5gc/nas/nasMessage"
+	nasie "github.com/free5gc/nas/ie"
+	"github.com/free5gc/nas/message"
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/openapi/pcf/SMPolicyControl"
@@ -37,10 +37,10 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 	logger.PduSessLog.Infoln("In HandlePDUSessionSMContextCreate")
 
 	// Check has PDU Session Establishment Request
-	m := nas.NewMessage()
-	if err := m.GsmMessageDecode(&request.BinaryDataN1SmMessage); err != nil ||
-		m.GsmHeader.GetMessageType() != nas.MsgTypePDUSessionEstablishmentRequest {
-		logger.PduSessLog.Warnln("GsmMessageDecode Error: ", err)
+	gsmMessage, parseErr := message.ParseGSM(request.BinaryDataN1SmMessage)
+	establishmentRequest, isEstReq := gsmMessage.(*message.PDUSessEstReq)
+	if parseErr != nil || !isEstReq {
+		logger.PduSessLog.Warnln("ParseGSM Error: ", parseErr)
 		postSmContextsError := models.PostSmContextsError{
 			JsonData: &models.SmContextCreateError{
 				Error: &smf_errors.N1SmError,
@@ -104,7 +104,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 		logger.PduSessLog.Warnf("S-NSSAI[sst: %d, sd: %s] DNN[%s] not matched DNN Config",
 			sst, sd, smContext.Dnn)
 		p.makeEstRejectResAndReleaseSMContext(c, smContext,
-			nasMessage.Cause5GSMRequestRejectedUnspecified,
+			nasie.Cause5GSM_ReqRejected,
 			&smf_errors.DnnNotSupported)
 		return
 	}
@@ -168,7 +168,6 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 		}
 	}()
 
-	establishmentRequest := m.PDUSessionEstablishmentRequest
 	if err := HandlePDUSessionEstablishmentRequest(smContext, establishmentRequest); err != nil {
 		smContext.Log.Errorf("PDU Session Establishment fail by %s", err)
 		gsmError := &GSMError{}
@@ -179,7 +178,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 			return
 		}
 		p.makeEstRejectResAndReleaseSMContext(c, smContext,
-			nasMessage.Cause5GSMRequestRejectedUnspecified,
+			nasie.Cause5GSM_ReqRejected,
 			&smf_errors.N1SmError)
 		return
 	}
@@ -203,7 +202,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 		smContext.SetState(smf_context.InActive)
 		smContext.Log.Errorf("PDUSessionSMContextCreate err: %v", err)
 		p.makeEstRejectResAndReleaseSMContext(c, smContext,
-			nasMessage.Cause5GSMInsufficientResourcesForSpecificSliceAndDNN,
+			nasie.Cause5GSM_InsufRsrcForSpecificSliceAndDNN,
 			&smf_errors.InsufficientResourceSliceDnn)
 		return
 	}
@@ -228,7 +227,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 
 				if problemDetails.Cause == "USER_UNKNOWN" {
 					p.makeEstRejectResAndReleaseSMContext(c, smContext,
-						nasMessage.Cause5GSMRequestRejectedUnspecified,
+						nasie.Cause5GSM_ReqRejected,
 						&smf_errors.SubscriptionDenied)
 					return
 				}
@@ -237,7 +236,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 			}
 		}
 		p.makeEstRejectResAndReleaseSMContext(c, smContext,
-			nasMessage.Cause5GSMNetworkFailure,
+			nasie.Cause5GSM_NwFailure,
 			&smf_errors.NetworkFailure)
 		return
 	}
@@ -256,7 +255,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 	if err = smContext.ApplySessionRules(smPolicyDecision); err != nil {
 		smContext.Log.Errorf("PDUSessionSMContextCreate err: %v", err)
 		p.makeEstRejectResAndReleaseSMContext(c, smContext,
-			nasMessage.Cause5GSMRequestRejectedUnspecified,
+			nasie.Cause5GSM_ReqRejected,
 			&smf_errors.SubscriptionDenied)
 		return
 	}
@@ -271,7 +270,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 		smContext.SetState(smf_context.InActive)
 		smContext.Log.Errorf("PDUSessionSMContextCreate err: %v", err)
 		p.makeEstRejectResAndReleaseSMContext(c, smContext,
-			nasMessage.Cause5GSMInsufficientResourcesForSpecificSliceAndDNN,
+			nasie.Cause5GSM_InsufRsrcForSpecificSliceAndDNN,
 			&smf_errors.InsufficientResourceSliceDnn)
 		return
 	}
@@ -281,7 +280,7 @@ func (p *Processor) HandlePDUSessionSMContextCreate(
 		smContext.SetState(smf_context.InActive)
 		smContext.Log.Errorf("PDUSessionSMContextCreate err: %v", err)
 		p.makeEstRejectResAndReleaseSMContext(c, smContext,
-			nasMessage.Cause5GSMInsufficientResourcesForSpecificSliceAndDNN,
+			nasie.Cause5GSM_InsufRsrcForSpecificSliceAndDNN,
 			&smf_errors.InsufficientResourceSliceDnn)
 		return
 	}
@@ -378,8 +377,8 @@ func (p *Processor) HandlePDUSessionSMContextUpdate(
 	smContextUpdateData := body.JsonData
 
 	if body.BinaryDataN1SmMessage != nil {
-		m := nas.NewMessage()
-		err = m.GsmMessageDecode(&body.BinaryDataN1SmMessage)
+		var gsmMessage message.GSMMessage
+		gsmMessage, err = message.ParseGSM(body.BinaryDataN1SmMessage)
 		smContext.Log.Tracef("N1 Message: %s", hex.EncodeToString(body.BinaryDataN1SmMessage))
 		if err != nil {
 			smContext.Log.Errorf("N1 Message parse failed: %v", err)
@@ -393,13 +392,13 @@ func (p *Processor) HandlePDUSessionSMContextUpdate(
 			return
 		}
 
-		switch m.GsmHeader.GetMessageType() {
-		case nas.MsgTypePDUSessionReleaseRequest:
+		switch m := gsmMessage.(type) {
+		case *message.PDUSessRelReq:
 			smContext.CheckState(smf_context.Active)
 			// Wait till the state becomes Active again
 			// TODO: implement sleep wait in concurrent architecture
 
-			HandlePDUSessionReleaseRequest(smContext, m.PDUSessionReleaseRequest)
+			HandlePDUSessionReleaseRequest(smContext, m)
 			if smContext.SelectedUPF != nil && smContext.PDUAddress != nil {
 				smContext.Log.Infof("Release IP[%s]", smContext.PDUAddress)
 				upi.ReleaseUEIP(smContext.SelectedUPF, smContext.PDUAddress, smContext.UseStaticIP)
@@ -438,9 +437,9 @@ func (p *Processor) HandlePDUSessionSMContextUpdate(
 				}
 			}
 
-			cause := nasMessage.Cause5GSMRegularDeactivation
-			if m.PDUSessionReleaseRequest.Cause5GSM != nil {
-				cause = m.PDUSessionReleaseRequest.Cause5GSM.GetCauseValue()
+			cause := nasie.Cause5GSM_RegularDeactivation
+			if m.Cause5GSM != nil {
+				cause = m.Cause5GSM.Value
 			}
 
 			if buf, err = smf_context.
@@ -467,7 +466,7 @@ func (p *Processor) HandlePDUSessionSMContextUpdate(
 			smContext.SetState(smf_context.PFCPModification)
 
 			pfcpResponseStatus = releaseSession(smContext)
-		case nas.MsgTypePDUSessionReleaseComplete:
+		case *message.PDUSessRelComplete:
 			smContext.CheckState(smf_context.InActivePending)
 			// Wait till the state becomes Active again
 			// TODO: implement sleep wait in concurrent architecture
@@ -480,16 +479,16 @@ func (p *Processor) HandlePDUSessionSMContextUpdate(
 			if smContext.Tunnel.ANInformation.IPAddress == nil {
 				p.RemoveSMContextFromAllNF(smContext, true)
 			}
-		case nas.MsgTypePDUSessionModificationRequest:
+		case *message.PDUSessModReq:
 			if rsp, errHandleReq := p.
-				HandlePDUSessionModificationRequest(smContext, m.PDUSessionModificationRequest); errHandleReq != nil {
+				HandlePDUSessionModificationRequest(smContext, m); errHandleReq != nil {
 				if buf, err = smf_context.BuildGSMPDUSessionModificationReject(smContext); err != nil {
 					smContext.Log.Errorf("build GSM PDUSessionModificationReject failed: %+v", err)
 				} else {
 					response.BinaryDataN1SmMessage = buf
 				}
 			} else {
-				if buf, err = rsp.PlainNasEncode(); err != nil {
+				if buf, err = rsp.MarshalBinary(); err != nil {
 					smContext.Log.Errorf("build GSM PDUSessionModificationCommand failed: %+v", err)
 				} else {
 					response.BinaryDataN1SmMessage = buf
@@ -508,9 +507,9 @@ func (p *Processor) HandlePDUSessionSMContextUpdate(
 			response.JsonData.N1SmMsg = &models.RefToBinaryData{ContentId: "PDUSessionModificationReject"}
 			c.Render(http.StatusOK, openapi.MultipartRelatedRender{Data: response})
 			return
-		case nas.MsgTypePDUSessionModificationComplete:
+		case *message.PDUSessModComplete:
 			smContext.StopT3591()
-		case nas.MsgTypePDUSessionModificationReject:
+		case *message.PDUSessModRej:
 			smContext.StopT3591()
 		}
 	}

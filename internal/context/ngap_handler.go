@@ -5,34 +5,27 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/free5gc/aper"
-	"github.com/free5gc/ngap/ngapType"
+	ngapie "github.com/free5gc/ngap/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp/pfcpType"
 	"github.com/free5gc/smf/internal/logger"
 )
 
-func strNgapCause(cause *ngapType.Cause) string {
+func strNgapCause(cause *ngapie.Cause) string {
 	ret := ""
-	switch cause.Present {
-	case ngapType.CausePresentRadioNetwork:
-		ret = fmt.Sprintf("Cause by RadioNetwork[%d]",
-			cause.RadioNetwork.Value)
-	case ngapType.CausePresentTransport:
-		ret = fmt.Sprintf("Cause by Transport[%d]",
-			cause.Transport.Value)
-	case ngapType.CausePresentNas:
-		ret = fmt.Sprintf("Cause by NAS[%d]",
-			cause.Nas.Value)
-	case ngapType.CausePresentProtocol:
-		ret = fmt.Sprintf("Cause by Protocol[%d]",
-			cause.Protocol.Value)
-	case ngapType.CausePresentMisc:
-		ret = fmt.Sprintf("Cause by Protocol[%d]",
-			cause.Misc.Value)
-	case ngapType.CausePresentChoiceExtensions:
-		ret = fmt.Sprintf("Cause by Protocol[%v]",
-			cause.ChoiceExtensions)
+	switch c := cause.Choice.(type) {
+	case *ngapie.CauseRadioNetwork:
+		ret = fmt.Sprintf("Cause by RadioNetwork[%d]", c.Value)
+	case *ngapie.CauseTransport:
+		ret = fmt.Sprintf("Cause by Transport[%d]", c.Value)
+	case *ngapie.CauseNas:
+		ret = fmt.Sprintf("Cause by NAS[%d]", c.Value)
+	case *ngapie.CauseProtocol:
+		ret = fmt.Sprintf("Cause by Protocol[%d]", c.Value)
+	case *ngapie.CauseMisc:
+		ret = fmt.Sprintf("Cause by Protocol[%d]", c.Value)
+	case *ngapie.ProtocolIESingleContainerCauseExtIEs:
+		ret = fmt.Sprintf("Cause by Protocol[%v]", c)
 	default:
 		ret = "Cause [unspecific]"
 	}
@@ -40,37 +33,47 @@ func strNgapCause(cause *ngapType.Cause) string {
 	return ret
 }
 
-func HandlePDUSessionResourceSetupResponseTransfer(b []byte, ctx *SMContext) error {
-	resourceSetupResponseTransfer := ngapType.PDUSessionResourceSetupResponseTransfer{}
+// gtpTunnelFromUPTransport returns the GTPTunnel choice of an
+// UPTransportLayerInformation, or nil if another choice is present.
+func gtpTunnelFromUPTransport(upInfo *ngapie.UPTransportLayerInformation) *ngapie.GTPTunnel {
+	if upInfo == nil {
+		return nil
+	}
+	if tunnel, ok := upInfo.Choice.(*ngapie.GTPTunnel); ok {
+		return tunnel
+	}
+	return nil
+}
 
-	err := aper.UnmarshalWithParams(b, &resourceSetupResponseTransfer, "valueExt")
+func HandlePDUSessionResourceSetupResponseTransfer(b []byte, ctx *SMContext) error {
+	resourceSetupResponseTransfer := ngapie.PDUSessionResourceSetupResponseTransfer{}
+
+	err := ngapie.UnmarshalBinary(b, &resourceSetupResponseTransfer)
 	if err != nil {
 		return err
 	}
 
 	QosFlowPerTNLInformation := resourceSetupResponseTransfer.DLQosFlowPerTNLInformation
-	var DCQosFlowPerTNLInformationItem ngapType.QosFlowPerTNLInformationItem
+	var DCQosFlowPerTNLInformationItem ngapie.QosFlowPerTNLInformationItem
 	DCQosFlowPerTNLInformation := resourceSetupResponseTransfer.AdditionalDLQosFlowPerTNLInformation
 	if DCQosFlowPerTNLInformation != nil && len(DCQosFlowPerTNLInformation.List) > 0 {
 		ctx.NrdcIndicator = true
 		DCQosFlowPerTNLInformationItem = DCQosFlowPerTNLInformation.List[0]
 	}
 
-	if QosFlowPerTNLInformation.UPTransportLayerInformation.Present !=
-		ngapType.UPTransportLayerInformationPresentGTPTunnel {
-		return errors.New("resourceSetupResponseTransfer.QosFlowPerTNLInformation.UPTransportLayerInformation.Present")
+	GTPTunnel := gtpTunnelFromUPTransport(QosFlowPerTNLInformation.UPTransportLayerInformation)
+	if GTPTunnel == nil {
+		return errors.New("resourceSetupResponseTransfer.QosFlowPerTNLInformation.UPTransportLayerInformation.Choice")
 	}
-	if ctx.NrdcIndicator && DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation.Present !=
-		ngapType.UPTransportLayerInformationPresentGTPTunnel {
-		return errors.New(
-			"resourceSetupResponseTransfer.AdditionalQosFlowPerTNLInformation." +
-				"QosFlowPerTNLInformation.UPTransportLayerInformation.Present")
-	}
-
-	GTPTunnel := QosFlowPerTNLInformation.UPTransportLayerInformation.GTPTunnel
-	DCGTPTunnel := &ngapType.GTPTunnel{}
+	DCGTPTunnel := &ngapie.GTPTunnel{}
 	if ctx.NrdcIndicator {
-		DCGTPTunnel = DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation.GTPTunnel
+		DCGTPTunnel = gtpTunnelFromUPTransport(
+			DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation)
+		if DCGTPTunnel == nil {
+			return errors.New(
+				"resourceSetupResponseTransfer.AdditionalQosFlowPerTNLInformation." +
+					"QosFlowPerTNLInformation.UPTransportLayerInformation.Choice")
+		}
 	}
 
 	ctx.Tunnel.UpdateANInformation(
@@ -90,19 +93,19 @@ func HandlePDUSessionResourceSetupResponseTransfer(b []byte, ctx *SMContext) err
 }
 
 func HandlePDUSessionResourceModifyResponseTransfer(b []byte, ctx *SMContext) error {
-	resourceModifyResponseTransfer := ngapType.PDUSessionResourceModifyResponseTransfer{}
+	resourceModifyResponseTransfer := ngapie.PDUSessionResourceModifyResponseTransfer{}
 
-	err := aper.UnmarshalWithParams(b, &resourceModifyResponseTransfer, "valueExt")
+	err := ngapie.UnmarshalBinary(b, &resourceModifyResponseTransfer)
 	if err != nil {
 		return err
 	}
 
 	if DLInfo := resourceModifyResponseTransfer.DLNGUUPTNLInformation; DLInfo != nil {
-		GTPTunnel := DLInfo.GTPTunnel
-
-		ctx.Tunnel.UpdateANInformation(
-			GTPTunnel.TransportLayerAddress.Value.Bytes,
-			binary.BigEndian.Uint32(GTPTunnel.GTPTEID.Value))
+		if GTPTunnel := gtpTunnelFromUPTransport(DLInfo); GTPTunnel != nil {
+			ctx.Tunnel.UpdateANInformation(
+				GTPTunnel.TransportLayerAddress.Value.Bytes,
+				binary.BigEndian.Uint32(GTPTunnel.GTPTEID.Value))
+		}
 	}
 
 	if qosInfoList := resourceModifyResponseTransfer.QosFlowAddOrModifyResponseList; qosInfoList != nil {
@@ -120,7 +123,7 @@ func HandlePDUSessionResourceModifyResponseTransfer(b []byte, ctx *SMContext) er
 		for _, item := range qosFailedInfoList.List {
 			qfi := uint8(item.QosFlowIdentifier.Value)
 			logger.PduSessLog.Warnf("PDU Session Resource Modify QFI[%d] %s",
-				qfi, strNgapCause(&item.Cause))
+				qfi, strNgapCause(item.Cause))
 
 			if qosFlow, ok := ctx.AdditionalQosFlows[qfi]; ok {
 				qosFlow.State = QoSFlowUnset
@@ -134,29 +137,27 @@ func HandlePDUSessionResourceModifyResponseTransfer(b []byte, ctx *SMContext) er
 }
 
 func HandlePDUSessionResourceModifyIndicationTransfer(b []byte, ctx *SMContext) error {
-	resourceModifyIndicationTransfer := ngapType.PDUSessionResourceModifyIndicationTransfer{}
+	resourceModifyIndicationTransfer := ngapie.PDUSessionResourceModifyIndicationTransfer{}
 
-	if err := aper.UnmarshalWithParams(b, &resourceModifyIndicationTransfer, "valueExt"); err != nil {
+	if err := ngapie.UnmarshalBinary(b, &resourceModifyIndicationTransfer); err != nil {
 		return err
 	}
 
-	var DCQosFlowPerTNLInformationItem ngapType.QosFlowPerTNLInformationItem
+	var DCQosFlowPerTNLInformationItem ngapie.QosFlowPerTNLInformationItem
 	DCQosFlowPerTNLInformation := resourceModifyIndicationTransfer.AdditionalDLQosFlowPerTNLInformation
 	if DCQosFlowPerTNLInformation != nil && len(DCQosFlowPerTNLInformation.List) > 0 {
 		ctx.NrdcIndicator = true
 		DCQosFlowPerTNLInformationItem = DCQosFlowPerTNLInformation.List[0]
 	}
 
-	if ctx.NrdcIndicator && DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation.Present !=
-		ngapType.UPTransportLayerInformationPresentGTPTunnel {
-		return errors.New(
-			"resourceModifyIndicationTransfer.AdditionalQosFlowPerTNLInformation." +
-				"QosFlowPerTNLInformation.UPTransportLayerInformation.Present")
-	}
-
-	DCGTPTunnel := &ngapType.GTPTunnel{}
 	if ctx.NrdcIndicator {
-		DCGTPTunnel = DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation.GTPTunnel
+		DCGTPTunnel := gtpTunnelFromUPTransport(
+			DCQosFlowPerTNLInformationItem.QosFlowPerTNLInformation.UPTransportLayerInformation)
+		if DCGTPTunnel == nil {
+			return errors.New(
+				"resourceModifyIndicationTransfer.AdditionalQosFlowPerTNLInformation." +
+					"QosFlowPerTNLInformation.UPTransportLayerInformation.Choice")
+		}
 		ctx.DCTunnel.UpdateANInformation(
 			DCGTPTunnel.TransportLayerAddress.Value.Bytes,
 			binary.BigEndian.Uint32(DCGTPTunnel.GTPTEID.Value))
@@ -166,33 +167,15 @@ func HandlePDUSessionResourceModifyIndicationTransfer(b []byte, ctx *SMContext) 
 }
 
 func HandlePDUSessionResourceSetupUnsuccessfulTransfer(b []byte, ctx *SMContext) error {
-	resourceSetupUnsuccessfulTransfer := ngapType.PDUSessionResourceSetupUnsuccessfulTransfer{}
+	resourceSetupUnsuccessfulTransfer := ngapie.PDUSessionResourceSetupUnsuccessfulTransfer{}
 
-	err := aper.UnmarshalWithParams(b, &resourceSetupUnsuccessfulTransfer, "valueExt")
+	err := ngapie.UnmarshalBinary(b, &resourceSetupUnsuccessfulTransfer)
 	if err != nil {
 		return err
 	}
 
-	switch resourceSetupUnsuccessfulTransfer.Cause.Present {
-	case ngapType.CausePresentRadioNetwork:
-		logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful by RadioNetwork[%d]",
-			resourceSetupUnsuccessfulTransfer.Cause.RadioNetwork.Value)
-	case ngapType.CausePresentTransport:
-		logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful by Transport[%d]",
-			resourceSetupUnsuccessfulTransfer.Cause.Transport.Value)
-	case ngapType.CausePresentNas:
-		logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful by NAS[%d]",
-			resourceSetupUnsuccessfulTransfer.Cause.Nas.Value)
-	case ngapType.CausePresentProtocol:
-		logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful by Protocol[%d]",
-			resourceSetupUnsuccessfulTransfer.Cause.Protocol.Value)
-	case ngapType.CausePresentMisc:
-		logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful by Protocol[%d]",
-			resourceSetupUnsuccessfulTransfer.Cause.Misc.Value)
-	case ngapType.CausePresentChoiceExtensions:
-		logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful by Protocol[%v]",
-			resourceSetupUnsuccessfulTransfer.Cause.ChoiceExtensions)
-	}
+	logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful: %s",
+		strNgapCause(resourceSetupUnsuccessfulTransfer.Cause))
 
 	ctx.UpCnxState = models.UpCnxState_ACTIVATING
 
@@ -200,17 +183,16 @@ func HandlePDUSessionResourceSetupUnsuccessfulTransfer(b []byte, ctx *SMContext)
 }
 
 func HandlePathSwitchRequestTransfer(b []byte, ctx *SMContext) error {
-	pathSwitchRequestTransfer := ngapType.PathSwitchRequestTransfer{}
+	pathSwitchRequestTransfer := ngapie.PathSwitchRequestTransfer{}
 
-	if err := aper.UnmarshalWithParams(b, &pathSwitchRequestTransfer, "valueExt"); err != nil {
+	if err := ngapie.UnmarshalBinary(b, &pathSwitchRequestTransfer); err != nil {
 		return err
 	}
 
-	if pathSwitchRequestTransfer.DLNGUUPTNLInformation.Present != ngapType.UPTransportLayerInformationPresentGTPTunnel {
-		return errors.New("pathSwitchRequestTransfer.DLNGUUPTNLInformation.Present")
+	GTPTunnel := gtpTunnelFromUPTransport(pathSwitchRequestTransfer.DLNGUUPTNLInformation)
+	if GTPTunnel == nil {
+		return errors.New("pathSwitchRequestTransfer.DLNGUUPTNLInformation.Choice")
 	}
-
-	GTPTunnel := pathSwitchRequestTransfer.DLNGUUPTNLInformation.GTPTunnel
 
 	ctx.Tunnel.UpdateANInformation(
 		GTPTunnel.TransportLayerAddress.Value.Bytes,
@@ -223,19 +205,19 @@ func HandlePathSwitchRequestTransfer(b []byte, ctx *SMContext) error {
 		rcvSecurityIndication := pathSwitchRequestTransfer.UserPlaneSecurityInformation.SecurityIndication
 		rcvUpSecurity := new(models.UpSecurity)
 		switch rcvSecurityIndication.IntegrityProtectionIndication.Value {
-		case ngapType.IntegrityProtectionIndicationPresentRequired:
+		case ngapie.IntegrityProtectionIndicationPresentRequired:
 			rcvUpSecurity.UpIntegr = models.UpIntegrity_REQUIRED
-		case ngapType.IntegrityProtectionIndicationPresentPreferred:
+		case ngapie.IntegrityProtectionIndicationPresentPreferred:
 			rcvUpSecurity.UpIntegr = models.UpIntegrity_PREFERRED
-		case ngapType.IntegrityProtectionIndicationPresentNotNeeded:
+		case ngapie.IntegrityProtectionIndicationPresentNotNeeded:
 			rcvUpSecurity.UpIntegr = models.UpIntegrity_NOT_NEEDED
 		}
 		switch rcvSecurityIndication.ConfidentialityProtectionIndication.Value {
-		case ngapType.ConfidentialityProtectionIndicationPresentRequired:
+		case ngapie.ConfidentialityProtectionIndicationPresentRequired:
 			rcvUpSecurity.UpConfid = models.UpConfidentiality_REQUIRED
-		case ngapType.ConfidentialityProtectionIndicationPresentPreferred:
+		case ngapie.ConfidentialityProtectionIndicationPresentPreferred:
 			rcvUpSecurity.UpConfid = models.UpConfidentiality_PREFERRED
-		case ngapType.ConfidentialityProtectionIndicationPresentNotNeeded:
+		case ngapie.ConfidentialityProtectionIndicationPresentNotNeeded:
 			rcvUpSecurity.UpConfid = models.UpConfidentiality_NOT_NEEDED
 		}
 
@@ -255,10 +237,15 @@ func HandlePathSwitchRequestTransfer(b []byte, ctx *SMContext) error {
 		if ieExtensions == nil {
 			logger.PduSessLog.Warnf("PathSwitchRequestTransfer IEExtensions is nil when NRDC is activated")
 		} else {
-			for _, ie := range ieExtensions.List {
-				if ie.Id.Value == ngapType.ProtocolIEIDAdditionalDLQosFlowPerTNLInformation {
-					qosFlowInfo := ie.ExtensionValue.AdditionalDLQosFlowPerTNLInformation.List[0]
-					DCGTPTunnel := qosFlowInfo.QosFlowPerTNLInformation.UPTransportLayerInformation.GTPTunnel
+			for _, extIE := range ieExtensions.List {
+				if extIE.Id.Value == ngapie.ProtocolIEIDAdditionalDLQosFlowPerTNLInformation {
+					qosFlowInfo := extIE.AdditionalDLQosFlowPerTNLInformation.List[0]
+					DCGTPTunnel := gtpTunnelFromUPTransport(
+						qosFlowInfo.QosFlowPerTNLInformation.UPTransportLayerInformation)
+					if DCGTPTunnel == nil {
+						logger.PduSessLog.Warnf("AdditionalDLQosFlowPerTNLInformation without GTPTunnel choice")
+						break
+					}
 					ctx.DCTunnel.UpdateANInformation(
 						DCGTPTunnel.TransportLayerAddress.Value.Bytes,
 						binary.BigEndian.Uint32(DCGTPTunnel.GTPTEID.Value))
@@ -272,9 +259,9 @@ func HandlePathSwitchRequestTransfer(b []byte, ctx *SMContext) error {
 }
 
 func HandlePathSwitchRequestSetupFailedTransfer(b []byte, ctx *SMContext) error {
-	pathSwitchRequestSetupFailedTransfer := ngapType.PathSwitchRequestSetupFailedTransfer{}
+	pathSwitchRequestSetupFailedTransfer := ngapie.PathSwitchRequestSetupFailedTransfer{}
 
-	err := aper.UnmarshalWithParams(b, &pathSwitchRequestSetupFailedTransfer, "valueExt")
+	err := ngapie.UnmarshalBinary(b, &pathSwitchRequestSetupFailedTransfer)
 	if err != nil {
 		return err
 	}
@@ -284,9 +271,9 @@ func HandlePathSwitchRequestSetupFailedTransfer(b []byte, ctx *SMContext) error 
 }
 
 func HandleHandoverRequiredTransfer(b []byte, ctx *SMContext) error {
-	handoverRequiredTransfer := ngapType.HandoverRequiredTransfer{}
+	handoverRequiredTransfer := ngapie.HandoverRequiredTransfer{}
 
-	err := aper.UnmarshalWithParams(b, &handoverRequiredTransfer, "valueExt")
+	err := ngapie.UnmarshalBinary(b, &handoverRequiredTransfer)
 
 	directForwardingPath := handoverRequiredTransfer.DirectForwardingPathAvailability
 	if directForwardingPath != nil {
@@ -304,14 +291,17 @@ func HandleHandoverRequiredTransfer(b []byte, ctx *SMContext) error {
 }
 
 func HandleHandoverRequestAcknowledgeTransfer(b []byte, ctx *SMContext) error {
-	handoverRequestAcknowledgeTransfer := ngapType.HandoverRequestAcknowledgeTransfer{}
+	handoverRequestAcknowledgeTransfer := ngapie.HandoverRequestAcknowledgeTransfer{}
 
-	err := aper.UnmarshalWithParams(b, &handoverRequestAcknowledgeTransfer, "valueExt")
+	err := ngapie.UnmarshalBinary(b, &handoverRequestAcknowledgeTransfer)
 	if err != nil {
 		return err
 	}
 
-	DLNGUUPGTPTunnel := handoverRequestAcknowledgeTransfer.DLNGUUPTNLInformation.GTPTunnel
+	DLNGUUPGTPTunnel := gtpTunnelFromUPTransport(handoverRequestAcknowledgeTransfer.DLNGUUPTNLInformation)
+	if DLNGUUPGTPTunnel == nil {
+		return errors.New("handoverRequestAcknowledgeTransfer.DLNGUUPTNLInformation.Choice")
+	}
 
 	ctx.Tunnel.UpdateANInformation(
 		DLNGUUPGTPTunnel.TransportLayerAddress.Value.Bytes,
@@ -327,7 +317,10 @@ func HandleHandoverRequestAcknowledgeTransfer(b []byte, ctx *SMContext) error {
 
 	switch ctx.DLForwardingType {
 	case IndirectForwarding:
-		DLForwardingGTPTunnel := DLForwardingInfo.GTPTunnel
+		DLForwardingGTPTunnel := gtpTunnelFromUPTransport(DLForwardingInfo)
+		if DLForwardingGTPTunnel == nil {
+			return errors.New("handoverRequestAcknowledgeTransfer.DLForwardingUPTNLInformation.Choice")
+		}
 
 		ctx.IndirectForwardingTunnel = NewDataPath()
 		ctx.IndirectForwardingTunnel.FirstDPNode = NewDataPathNode()

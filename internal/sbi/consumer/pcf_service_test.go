@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/free5gc/nas/nasType"
+	nasie "github.com/free5gc/nas/ie"
 	"github.com/free5gc/openapi/models"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/internal/sbi/consumer"
@@ -36,8 +36,8 @@ func TestSendSMPolicyAssociationUpdateByUERequestModification(t *testing.T) {
 	testCases := []struct {
 		name         string
 		smContext    *smf_context.SMContext
-		qosRules     nasType.QoSRules
-		qosFlowDescs nasType.QoSFlowDescs
+		qosRules     nasie.QosRules
+		qosFlowDescs nasie.QosFlowDescs
 
 		smPolicyDecision *models.SmPolicyDecision
 		responseErr      error
@@ -45,16 +45,16 @@ func TestSendSMPolicyAssociationUpdateByUERequestModification(t *testing.T) {
 		{
 			name:             "QoSRules is nil",
 			smContext:        smf_context.NewSMContext("imsi-208930000000001", 10),
-			qosRules:         nasType.QoSRules{},
-			qosFlowDescs:     nasType.QoSFlowDescs{nasType.QoSFlowDesc{}},
+			qosRules:         nasie.QosRules{},
+			qosFlowDescs:     nasie.QosFlowDescs{Descs: []nasie.QosFlowDesc{{}}},
 			smPolicyDecision: nil,
 			responseErr:      fmt.Errorf("QoS rules missing for UE-initiated request"),
 		},
 		{
 			name:             "QoSFlowDescs is nil",
 			smContext:        smf_context.NewSMContext("imsi-208930000000001", 10),
-			qosRules:         nasType.QoSRules{nasType.QoSRule{}},
-			qosFlowDescs:     nasType.QoSFlowDescs{},
+			qosRules:         nasie.QosRules{Rules: []nasie.QosRule{{}}},
+			qosFlowDescs:     nasie.QosFlowDescs{},
 			smPolicyDecision: nil,
 			responseErr:      fmt.Errorf("QoS Rule Operation Unknown"),
 		},

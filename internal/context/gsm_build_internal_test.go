@@ -6,9 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/free5gc/nas"
-	"github.com/free5gc/nas/nasMessage"
-	"github.com/free5gc/nas/nasType"
+	nasie "github.com/free5gc/nas/ie"
+	"github.com/free5gc/nas/message"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/util/idgenerator"
 )
@@ -32,7 +31,7 @@ func newGSMTestContext() *SMContext {
 		},
 		PDUSessionID:                 10,
 		Pti:                          1,
-		SelectedPDUSessionType:       nasMessage.PDUSessionTypeIPv4,
+		SelectedPDUSessionType:       nasie.PDUSessType_IPv4,
 		PDUAddress:                   net.ParseIP("10.60.0.1").To4(),
 		ProtocolConfigurationOptions: &ProtocolConfigurationOptions{},
 		SessionRules:                 map[string]*SessionRule{testSessRuleID: sessRule},
@@ -71,7 +70,7 @@ func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
 			name: "Full",
 			setupContext: func() *SMContext {
 				smContext := newGSMTestContext()
-				smContext.EstAcceptCause5gSMValue = nasMessage.Cause5GSMPDUSessionTypeIPv4OnlyAllowed
+				smContext.EstAcceptCause5gSMValue = nasie.Cause5GSM_PDUSessTypeIpv4OnlyAllowed
 				// exactly ONE PCC rule / ONE additional QoS flow: two or more
 				// makes the golden unstable (map iteration + rule ID allocation)
 				smContext.PCCRules = map[string]*PCCRule{
@@ -107,7 +106,7 @@ func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
 				}
 				return smContext
 			},
-			wantCause:    nasMessage.Cause5GSMPDUSessionTypeIPv4OnlyAllowed,
+			wantCause:    nasie.Cause5GSM_PDUSessTypeIpv4OnlyAllowed,
 			wantQoSRules: 2,
 			golden: []byte{
 				0x2e, 0x0a, 0x01, 0xc2, 0x11, 0x00, 0x12, 0x01, 0x00, 0x06, 0x31, 0x31,
@@ -188,22 +187,31 @@ func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
 			wantCause:     0,
 			wantQoSRules:  2,
 			wantPFsInRule: 4, // FlowInfo 1-4 yield one filter each (1x1 cross product)
+			// Golden updated for the new nas module (accepted wire-format
+			// changes; same lengths, same values, only ordering differs):
+			//  1. packet filter components are emitted in ie.PacketFilterContents'
+			//     fixed field order (remote addr, local addr, ports, proto,
+			//     ToS/SPI) instead of the old caller-append order;
+			//  2. QoS flow description parameters are emitted in parameter-ID
+			//     order (GFBR UL 02, GFBR DL 03, MFBR UL 04, MFBR DL 05) instead
+			//     of the old DL-before-UL append order.
+			// TS 24.501 parses both lists type-driven; order is not mandated.
 			golden: []byte{
 				0x2e, 0x0a, 0x01, 0xc2, 0x11, 0x00, 0x6f, 0x01, 0x00, 0x06, 0x31, 0x31,
-				0x01, 0x01, 0xff, 0x01, 0x02, 0x00, 0x63, 0x24, 0x31, 0x1c, 0x11, 0x0a,
-				0x3c, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0x41, 0x07, 0xd0, 0x0b, 0xb8,
-				0x10, 0x0a, 0x0a, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x50, 0x03, 0xe8,
-				0x30, 0x06, 0x12, 0x1f, 0x70, 0x28, 0xff, 0x11, 0x0a, 0x3c, 0x00, 0x01,
-				0xff, 0xff, 0xff, 0xff, 0x40, 0x01, 0xbb, 0x10, 0x0a, 0x14, 0x00, 0x00,
-				0xff, 0xff, 0x00, 0x00, 0x51, 0x13, 0x88, 0x17, 0x70, 0x30, 0x11, 0x23,
+				0x01, 0x01, 0xff, 0x01, 0x02, 0x00, 0x63, 0x24, 0x31, 0x1c, 0x10, 0x0a,
+				0x0a, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x11, 0x0a, 0x3c, 0x00, 0x01,
+				0xff, 0xff, 0xff, 0xff, 0x50, 0x03, 0xe8, 0x41, 0x07, 0xd0, 0x0b, 0xb8,
+				0x30, 0x06, 0x12, 0x1f, 0x10, 0x0a, 0x14, 0x00, 0x00, 0xff, 0xff, 0x00,
+				0x00, 0x11, 0x0a, 0x3c, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0x51, 0x13,
+				0x88, 0x17, 0x70, 0x40, 0x01, 0xbb, 0x30, 0x11, 0x70, 0x28, 0xff, 0x23,
 				0x0c, 0x11, 0x0a, 0x3c, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0x40, 0x1f,
-				0x90, 0x34, 0x11, 0x60, 0x00, 0x1a, 0x2b, 0x3c, 0x10, 0x0a, 0x1e, 0x00,
-				0x00, 0xff, 0xff, 0x00, 0x00, 0x50, 0x23, 0x28, 0x64, 0x02, 0x06, 0x01,
+				0x90, 0x34, 0x11, 0x10, 0x0a, 0x1e, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00,
+				0x50, 0x23, 0x28, 0x60, 0x00, 0x1a, 0x2b, 0x3c, 0x64, 0x02, 0x06, 0x01,
 				0x00, 0x64, 0x01, 0x00, 0xc8, 0x29, 0x05, 0x01, 0x0a, 0x3c, 0x00, 0x01,
 				0x22, 0x04, 0x01, 0x11, 0x22, 0x32, 0x79, 0x00, 0x20, 0x01, 0x20, 0x41,
-				0x01, 0x01, 0x09, 0x02, 0x20, 0x45, 0x01, 0x01, 0x01, 0x03, 0x03, 0x06,
-				0x00, 0x64, 0x02, 0x03, 0x06, 0x00, 0x32, 0x05, 0x03, 0x06, 0x00, 0xc8,
-				0x04, 0x03, 0x06, 0x00, 0x96, 0x25, 0x09, 0x08, 0x69, 0x6e, 0x74, 0x65,
+				0x01, 0x01, 0x09, 0x02, 0x20, 0x45, 0x01, 0x01, 0x01, 0x02, 0x03, 0x06,
+				0x00, 0x32, 0x03, 0x03, 0x06, 0x00, 0x64, 0x04, 0x03, 0x06, 0x00, 0x96,
+				0x05, 0x03, 0x06, 0x00, 0xc8, 0x25, 0x09, 0x08, 0x69, 0x6e, 0x74, 0x65,
 				0x72, 0x6e, 0x65, 0x74,
 			},
 		},
@@ -224,29 +232,28 @@ func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
 
 			require.Equal(t, tc.golden, got)
 
-			m := nas.NewMessage()
-			golden := tc.golden
-			require.NoError(t, m.GsmMessageDecode(&golden))
-			accept := m.PDUSessionEstablishmentAccept
-			require.Equal(t, nas.MsgTypePDUSessionEstablishmentAccept, m.GsmHeader.GetMessageType())
-			require.Equal(t, uint8(1), accept.GetPTI())
-			require.Equal(t, uint8(10), accept.GetPDUSessionID())
+			gsmMsg, errParse := message.ParseGSM(tc.golden)
+			require.NoError(t, errParse)
+			accept, ok := gsmMsg.(*message.PDUSessEstAccept)
+			require.True(t, ok)
+			require.Equal(t, message.MsgTypePDUSessEstAccept, accept.MsgType())
+			require.Equal(t, uint8(1), accept.ProcedureTransactionID())
+			require.Equal(t, uint8(10), accept.PDUSessionID())
 
-			addr := accept.PDUAddress.GetPDUAddressInformation()
-			require.Equal(t, []byte(net.ParseIP("10.60.0.1").To4()), addr[:4])
+			require.NotNil(t, accept.PDUAddr)
+			require.Equal(t, []byte(net.ParseIP("10.60.0.1").To4()), accept.PDUAddr.IPv4)
 
-			var qosRules nasType.QoSRules
-			require.NoError(t, qosRules.UnmarshalBinary(accept.AuthorizedQosRules.GetQosRule()))
-			require.Len(t, qosRules, tc.wantQoSRules)
+			require.NotNil(t, accept.AuthoQosRules)
+			require.Len(t, accept.AuthoQosRules.Rules, tc.wantQoSRules)
 			if tc.wantPFsInRule > 0 {
-				require.Len(t, qosRules[1].PacketFilterList, tc.wantPFsInRule)
+				require.Len(t, accept.AuthoQosRules.Rules[1].PktFilterList, tc.wantPFsInRule)
 			}
 
 			if tc.wantCause == 0 {
 				require.Nil(t, accept.Cause5GSM)
 			} else {
 				require.NotNil(t, accept.Cause5GSM)
-				require.Equal(t, tc.wantCause, accept.Cause5GSM.GetCauseValue())
+				require.Equal(t, tc.wantCause, accept.Cause5GSM.Value)
 			}
 		})
 	}
@@ -257,23 +264,26 @@ func TestGoldenBuildGSMPDUSessionEstablishmentReject(t *testing.T) {
 
 	golden := []byte{0x2e, 0x0a, 0x01, 0xc3, 0x26}
 
-	got, err := BuildGSMPDUSessionEstablishmentReject(smContext, nasMessage.Cause5GSMNetworkFailure)
+	got, err := BuildGSMPDUSessionEstablishmentReject(smContext, nasie.Cause5GSM_NwFailure)
 	require.NoError(t, err)
 
 	// double-encode guard: same fixture must yield identical bytes
-	got2, err := BuildGSMPDUSessionEstablishmentReject(smContext, nasMessage.Cause5GSMNetworkFailure)
+	got2, err := BuildGSMPDUSessionEstablishmentReject(smContext, nasie.Cause5GSM_NwFailure)
 	require.NoError(t, err)
 	require.Equal(t, got, got2)
 
 	require.Equal(t, golden, got)
 
 	// decode-back check
-	m := nas.NewMessage()
-	require.NoError(t, m.GsmMessageDecode(&golden))
-	require.Equal(t, nas.MsgTypePDUSessionEstablishmentReject, m.GsmHeader.GetMessageType())
-	require.Equal(t, uint8(1), m.PDUSessionEstablishmentReject.GetPTI())
-	require.Equal(t, uint8(10), m.PDUSessionEstablishmentReject.GetPDUSessionID())
-	require.Equal(t, nasMessage.Cause5GSMNetworkFailure, m.PDUSessionEstablishmentReject.GetCauseValue())
+	gsmMsg, errParse := message.ParseGSM(golden)
+	require.NoError(t, errParse)
+	reject, ok := gsmMsg.(*message.PDUSessEstRej)
+	require.True(t, ok)
+	require.Equal(t, message.MsgTypePDUSessEstRej, reject.MsgType())
+	require.Equal(t, uint8(1), reject.ProcedureTransactionID())
+	require.Equal(t, uint8(10), reject.PDUSessionID())
+	require.NotNil(t, reject.Cause5GSM)
+	require.Equal(t, nasie.Cause5GSM_NwFailure, reject.Cause5GSM.Value)
 }
 
 func TestGoldenBuildGSMPDUSessionReleaseCommand(t *testing.T) {
@@ -302,24 +312,25 @@ func TestGoldenBuildGSMPDUSessionReleaseCommand(t *testing.T) {
 			smContext := newGSMTestContext()
 
 			got, err := BuildGSMPDUSessionReleaseCommand(
-				smContext, nasMessage.Cause5GSMRegularDeactivation, tc.isTriggeredByUE)
+				smContext, nasie.Cause5GSM_RegularDeactivation, tc.isTriggeredByUE)
 			require.NoError(t, err)
 
 			got2, err := BuildGSMPDUSessionReleaseCommand(
-				smContext, nasMessage.Cause5GSMRegularDeactivation, tc.isTriggeredByUE)
+				smContext, nasie.Cause5GSM_RegularDeactivation, tc.isTriggeredByUE)
 			require.NoError(t, err)
 			require.Equal(t, got, got2)
 
 			require.Equal(t, tc.golden, got)
 
-			m := nas.NewMessage()
-			golden := tc.golden
-			require.NoError(t, m.GsmMessageDecode(&golden))
-			require.Equal(t, nas.MsgTypePDUSessionReleaseCommand, m.GsmHeader.GetMessageType())
-			require.Equal(t, tc.wantPTI, m.PDUSessionReleaseCommand.GetPTI())
-			require.Equal(t, uint8(10), m.PDUSessionReleaseCommand.GetPDUSessionID())
-			require.Equal(t, nasMessage.Cause5GSMRegularDeactivation,
-				m.PDUSessionReleaseCommand.GetCauseValue())
+			gsmMsg, errParse := message.ParseGSM(tc.golden)
+			require.NoError(t, errParse)
+			command, ok := gsmMsg.(*message.PDUSessRelCmd)
+			require.True(t, ok)
+			require.Equal(t, message.MsgTypePDUSessRelCmd, command.MsgType())
+			require.Equal(t, tc.wantPTI, command.ProcedureTransactionID())
+			require.Equal(t, uint8(10), command.PDUSessionID())
+			require.NotNil(t, command.Cause5GSM)
+			require.Equal(t, nasie.Cause5GSM_RegularDeactivation, command.Cause5GSM.Value)
 		})
 	}
 }
@@ -338,11 +349,13 @@ func TestGoldenBuildGSMPDUSessionModificationCommand(t *testing.T) {
 
 	require.Equal(t, golden, got)
 
-	m := nas.NewMessage()
-	require.NoError(t, m.GsmMessageDecode(&golden))
-	require.Equal(t, nas.MsgTypePDUSessionModificationCommand, m.GsmHeader.GetMessageType())
-	require.Equal(t, uint8(1), m.PDUSessionModificationCommand.GetPTI())
-	require.Equal(t, uint8(10), m.PDUSessionModificationCommand.GetPDUSessionID())
+	gsmMsg, errParse := message.ParseGSM(golden)
+	require.NoError(t, errParse)
+	command, ok := gsmMsg.(*message.PDUSessModCmd)
+	require.True(t, ok)
+	require.Equal(t, message.MsgTypePDUSessModCmd, command.MsgType())
+	require.Equal(t, uint8(1), command.ProcedureTransactionID())
+	require.Equal(t, uint8(10), command.PDUSessionID())
 }
 
 func TestGoldenBuildGSMPDUSessionReleaseReject(t *testing.T) {
@@ -359,13 +372,15 @@ func TestGoldenBuildGSMPDUSessionReleaseReject(t *testing.T) {
 
 	require.Equal(t, golden, got)
 
-	m := nas.NewMessage()
-	require.NoError(t, m.GsmMessageDecode(&golden))
-	require.Equal(t, nas.MsgTypePDUSessionReleaseReject, m.GsmHeader.GetMessageType())
-	require.Equal(t, uint8(1), m.PDUSessionReleaseReject.GetPTI())
-	require.Equal(t, uint8(10), m.PDUSessionReleaseReject.GetPDUSessionID())
-	require.Equal(t, nasMessage.Cause5GSMRequestRejectedUnspecified,
-		m.PDUSessionReleaseReject.GetCauseValue())
+	gsmMsg, errParse := message.ParseGSM(golden)
+	require.NoError(t, errParse)
+	reject, ok := gsmMsg.(*message.PDUSessRelRej)
+	require.True(t, ok)
+	require.Equal(t, message.MsgTypePDUSessRelRej, reject.MsgType())
+	require.Equal(t, uint8(1), reject.ProcedureTransactionID())
+	require.Equal(t, uint8(10), reject.PDUSessionID())
+	require.NotNil(t, reject.Cause5GSM)
+	require.Equal(t, nasie.Cause5GSM_ReqRejected, reject.Cause5GSM.Value)
 }
 
 func TestGoldenBuildGSMPDUSessionModificationReject(t *testing.T) {
@@ -382,11 +397,13 @@ func TestGoldenBuildGSMPDUSessionModificationReject(t *testing.T) {
 
 	require.Equal(t, golden, got)
 
-	m := nas.NewMessage()
-	require.NoError(t, m.GsmMessageDecode(&golden))
-	require.Equal(t, nas.MsgTypePDUSessionModificationReject, m.GsmHeader.GetMessageType())
-	require.Equal(t, uint8(1), m.PDUSessionModificationReject.GetPTI())
-	require.Equal(t, uint8(10), m.PDUSessionModificationReject.GetPDUSessionID())
-	require.Equal(t, nasMessage.Cause5GSMMessageTypeNonExistentOrNotImplemented,
-		m.PDUSessionModificationReject.GetCauseValue())
+	gsmMsg, errParse := message.ParseGSM(golden)
+	require.NoError(t, errParse)
+	reject, ok := gsmMsg.(*message.PDUSessModRej)
+	require.True(t, ok)
+	require.Equal(t, message.MsgTypePDUSessModRej, reject.MsgType())
+	require.Equal(t, uint8(1), reject.ProcedureTransactionID())
+	require.Equal(t, uint8(10), reject.PDUSessionID())
+	require.NotNil(t, reject.Cause5GSM)
+	require.Equal(t, nasie.Cause5GSM_MsgTypeNonExistentOrNotImpl, reject.Cause5GSM.Value)
 }

@@ -3,7 +3,7 @@ package processor
 import (
 	"fmt"
 
-	"github.com/free5gc/nas/nasMessage"
+	nasie "github.com/free5gc/nas/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp"
 	"github.com/free5gc/pfcp/pfcpType"
@@ -258,7 +258,7 @@ func (p *Processor) EstHandler(isDone <-chan struct{},
 		p.sendPDUSessionEstablishmentAccept(smContext)
 	} else {
 		// TODO: set appropriate 5GSM cause according to PFCP cause value
-		p.sendPDUSessionEstablishmentReject(smContext, nasMessage.Cause5GSMNetworkFailure)
+		p.sendPDUSessionEstablishmentReject(smContext, nasie.Cause5GSM_NwFailure)
 	}
 }
 
@@ -270,7 +270,7 @@ func (p *Processor) sendPDUSessionEstablishmentReject(
 	nasErrorCause uint8,
 ) {
 	smNasBuf, err := smf_context.BuildGSMPDUSessionEstablishmentReject(
-		smContext, nasMessage.Cause5GSMNetworkFailure)
+		smContext, nasie.Cause5GSM_NwFailure)
 	if err != nil {
 		logger.PduSessLog.Errorf("Build GSM PDUSessionEstablishmentReject failed: %s", err)
 		return

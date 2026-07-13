@@ -8,7 +8,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"github.com/free5gc/nas/nasMessage"
+	nasie "github.com/free5gc/nas/ie"
 	"github.com/free5gc/pfcp/pfcpType"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/pkg/factory"
@@ -29,15 +29,15 @@ var mockIfaces = []*factory.InterfaceUpfInfoItem{
 
 func convertPDUSessTypeToString(pduType uint8) string {
 	switch pduType {
-	case nasMessage.PDUSessionTypeIPv4:
+	case nasie.PDUSessType_IPv4:
 		return "PDU Session Type IPv4"
-	case nasMessage.PDUSessionTypeIPv6:
+	case nasie.PDUSessType_IPv6:
 		return "PDU Session Type IPv6"
-	case nasMessage.PDUSessionTypeIPv4IPv6:
+	case nasie.PDUSessType_IPv4v6:
 		return "PDU Session Type IPv4 IPv6"
-	case nasMessage.PDUSessionTypeUnstructured:
+	case nasie.PDUSessType_Unstructured:
 		return "PDU Session Type Unstructured"
-	case nasMessage.PDUSessionTypeEthernet:
+	case nasie.PDUSessType_Ethernet:
 		return "PDU Session Type Ethernet"
 	}
 
@@ -60,8 +60,8 @@ func TestIP(t *testing.T) {
 				IPv6EndPointAddresses: []net.IP{net.ParseIP("2001:4860:4860::8888")},
 				EndpointFQDN:          "www.google.com",
 			},
-			inputPDUSessionType: nasMessage.PDUSessionTypeIPv4,
-			paramStr:            "select " + convertPDUSessTypeToString(nasMessage.PDUSessionTypeIPv4),
+			inputPDUSessionType: nasie.PDUSessType_IPv4,
+			paramStr:            "select " + convertPDUSessTypeToString(nasie.PDUSessType_IPv4),
 			expectedIP:          "8.8.8.8",
 			expectedError:       nil,
 		},
@@ -72,8 +72,8 @@ func TestIP(t *testing.T) {
 				IPv6EndPointAddresses: []net.IP{net.ParseIP("2001:4860:4860::8888")},
 				EndpointFQDN:          "www.google.com",
 			},
-			inputPDUSessionType: nasMessage.PDUSessionTypeIPv6,
-			paramStr:            "select " + convertPDUSessTypeToString(nasMessage.PDUSessionTypeIPv6),
+			inputPDUSessionType: nasie.PDUSessType_IPv6,
+			paramStr:            "select " + convertPDUSessTypeToString(nasie.PDUSessType_IPv6),
 			expectedIP:          "2001:4860:4860::8888",
 			expectedError:       nil,
 		},

@@ -12,9 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
-	"github.com/free5gc/nas/nasConvert"
-	"github.com/free5gc/nas/nasMessage"
-	"github.com/free5gc/ngap/ngapType"
+	nasie "github.com/free5gc/nas/ie"
+	ngapie "github.com/free5gc/ngap/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp/pfcpType"
 	"github.com/free5gc/smf/internal/logger"
@@ -144,7 +143,7 @@ type SMContext struct {
 
 	// Handover related
 	DLForwardingType         DLForwardingType
-	DLDirectForwardingTunnel *ngapType.UPTransportLayerInformation
+	DLDirectForwardingTunnel *ngapie.UPTransportLayerInformation
 	IndirectForwardingTunnel *DataPath
 
 	// UP Security support TS 29.502 R16 6.1.6.2.39
@@ -481,22 +480,6 @@ func (smContext *SMContext) CheckState(state SMContextState) bool {
 
 func (smContext *SMContext) State() SMContextState {
 	return SMContextState(atomic.LoadUint32((*uint32)(&smContext.state)))
-}
-
-func (smContext *SMContext) PDUAddressToNAS() ([12]byte, uint8) {
-	var addr [12]byte
-	var addrLen uint8
-	copy(addr[:], smContext.PDUAddress)
-	switch smContext.SelectedPDUSessionType {
-	case nasMessage.PDUSessionTypeIPv4:
-		var addrLenBuf uint8 = 4 + 1
-		addrLen = addrLenBuf
-	case nasMessage.PDUSessionTypeIPv6:
-	case nasMessage.PDUSessionTypeIPv4IPv6:
-		var addrLenBuf uint8 = 12 + 1
-		addrLen = addrLenBuf
-	}
-	return addr, addrLen
 }
 
 func (smContext *SMContext) GetNodeIDByLocalSEID(seid uint64) pfcpType.NodeID {
@@ -914,34 +897,34 @@ func (smContext *SMContext) IsAllowedPDUSessionType(requestedPDUSessionType uint
 	}
 
 	smContext.EstAcceptCause5gSMValue = 0
-	switch nasConvert.PDUSessionTypeToModels(requestedPDUSessionType) {
+	switch PDUSessionTypeToModels(requestedPDUSessionType) {
 	case models.PduSessionType_IPV4:
 		if allowIPv4 {
-			smContext.SelectedPDUSessionType = nasConvert.ModelsToPDUSessionType(models.PduSessionType_IPV4)
+			smContext.SelectedPDUSessionType = ModelsToPDUSessionType(models.PduSessionType_IPV4)
 		} else {
 			return fmt.Errorf("PduSessionType_IPV4 is not allowed in DNN[%s] configuration", smContext.Dnn)
 		}
 	case models.PduSessionType_IPV6:
 		if allowIPv6 {
-			smContext.SelectedPDUSessionType = nasConvert.ModelsToPDUSessionType(models.PduSessionType_IPV6)
+			smContext.SelectedPDUSessionType = ModelsToPDUSessionType(models.PduSessionType_IPV6)
 		} else {
 			return fmt.Errorf("PduSessionType_IPV6 is not allowed in DNN[%s] configuration", smContext.Dnn)
 		}
 	case models.PduSessionType_IPV4_V6:
 		if allowIPv4 && allowIPv6 {
-			smContext.SelectedPDUSessionType = nasConvert.ModelsToPDUSessionType(models.PduSessionType_IPV4_V6)
+			smContext.SelectedPDUSessionType = ModelsToPDUSessionType(models.PduSessionType_IPV4_V6)
 		} else if allowIPv4 {
-			smContext.SelectedPDUSessionType = nasConvert.ModelsToPDUSessionType(models.PduSessionType_IPV4)
-			smContext.EstAcceptCause5gSMValue = nasMessage.Cause5GSMPDUSessionTypeIPv4OnlyAllowed
+			smContext.SelectedPDUSessionType = ModelsToPDUSessionType(models.PduSessionType_IPV4)
+			smContext.EstAcceptCause5gSMValue = nasie.Cause5GSM_PDUSessTypeIpv4OnlyAllowed
 		} else if allowIPv6 {
-			smContext.SelectedPDUSessionType = nasConvert.ModelsToPDUSessionType(models.PduSessionType_IPV6)
-			smContext.EstAcceptCause5gSMValue = nasMessage.Cause5GSMPDUSessionTypeIPv6OnlyAllowed
+			smContext.SelectedPDUSessionType = ModelsToPDUSessionType(models.PduSessionType_IPV6)
+			smContext.EstAcceptCause5gSMValue = nasie.Cause5GSM_PDUSessTypeIpv6OnlyAllowed
 		} else {
 			return fmt.Errorf("PduSessionType_IPV4_V6 is not allowed in DNN[%s] configuration", smContext.Dnn)
 		}
 	case models.PduSessionType_ETHERNET:
 		if allowEthernet {
-			smContext.SelectedPDUSessionType = nasConvert.ModelsToPDUSessionType(models.PduSessionType_ETHERNET)
+			smContext.SelectedPDUSessionType = ModelsToPDUSessionType(models.PduSessionType_ETHERNET)
 		} else {
 			return fmt.Errorf("PduSessionType_ETHERNET is not allowed in DNN[%s] configuration", smContext.Dnn)
 		}

@@ -5,9 +5,8 @@ go 1.26.2
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/davecgh/go-spew v1.1.1
-	github.com/free5gc/aper v1.1.1
-	github.com/free5gc/nas v1.2.3
-	github.com/free5gc/ngap v1.1.3
+	github.com/free5gc/nas v1.2.4-0.20260707083822-348faf940c55
+	github.com/free5gc/ngap v1.1.4-0.20260707055048-c26215fe47ef
 	github.com/free5gc/openapi v1.2.4
 	github.com/free5gc/pfcp v1.1.2
 	github.com/free5gc/util v1.3.2
@@ -25,6 +24,7 @@ require (
 )
 
 require (
+	github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
@@ -81,3 +81,4 @@ require (
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+

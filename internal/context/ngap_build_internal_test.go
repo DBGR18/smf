@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/free5gc/aper"
-	"github.com/free5gc/ngap/ngapType"
+	"github.com/free5gc/ngap/aper"
+	ngapie "github.com/free5gc/ngap/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp/pfcpType"
 	"github.com/free5gc/smf/pkg/factory"
@@ -39,23 +39,24 @@ func TestGoldenBuildPathSwitchRequestUnsuccessfulTransfer(t *testing.T) {
 	golden := []byte{0x00, 0x00}
 
 	got, err := BuildPathSwitchRequestUnsuccessfulTransfer(
-		ngapType.CausePresentRadioNetwork, ngapType.CauseRadioNetworkPresentUnspecified)
+		&ngapie.CauseRadioNetwork{Value: ngapie.CauseRadioNetworkPresentUnspecified})
 	require.NoError(t, err)
 
 	// double-encode guard
 	got2, err := BuildPathSwitchRequestUnsuccessfulTransfer(
-		ngapType.CausePresentRadioNetwork, ngapType.CauseRadioNetworkPresentUnspecified)
+		&ngapie.CauseRadioNetwork{Value: ngapie.CauseRadioNetworkPresentUnspecified})
 	require.NoError(t, err)
 	require.Equal(t, got, got2)
 
 	require.Equal(t, golden, got)
 
 	// decode-back check
-	var decoded ngapType.PathSwitchRequestUnsuccessfulTransfer
-	require.NoError(t, aper.UnmarshalWithParams(golden, &decoded, "valueExt"))
-	require.Equal(t, ngapType.CausePresentRadioNetwork, decoded.Cause.Present)
-	require.NotNil(t, decoded.Cause.RadioNetwork)
-	require.Equal(t, ngapType.CauseRadioNetworkPresentUnspecified, decoded.Cause.RadioNetwork.Value)
+	var decoded ngapie.PathSwitchRequestUnsuccessfulTransfer
+	require.NoError(t, ngapie.UnmarshalBinary(golden, &decoded))
+	require.NotNil(t, decoded.Cause)
+	radioNetwork, ok := decoded.Cause.Choice.(*ngapie.CauseRadioNetwork)
+	require.True(t, ok)
+	require.Equal(t, ngapie.CauseRadioNetworkPresentUnspecified, radioNetwork.Value)
 }
 
 func TestGoldenBuildPDUSessionResourceReleaseCommandTransfer(t *testing.T) {
@@ -70,11 +71,12 @@ func TestGoldenBuildPDUSessionResourceReleaseCommandTransfer(t *testing.T) {
 
 	require.Equal(t, golden, got)
 
-	var decoded ngapType.PDUSessionResourceReleaseCommandTransfer
-	require.NoError(t, aper.UnmarshalWithParams(golden, &decoded, "valueExt"))
-	require.Equal(t, ngapType.CausePresentNas, decoded.Cause.Present)
-	require.NotNil(t, decoded.Cause.Nas)
-	require.Equal(t, ngapType.CauseNasPresentNormalRelease, decoded.Cause.Nas.Value)
+	var decoded ngapie.PDUSessionResourceReleaseCommandTransfer
+	require.NoError(t, ngapie.UnmarshalBinary(golden, &decoded))
+	require.NotNil(t, decoded.Cause)
+	nas, ok := decoded.Cause.Choice.(*ngapie.CauseNas)
+	require.True(t, ok)
+	require.Equal(t, ngapie.CauseNasPresentNormalRelease, nas.Value)
 }
 
 func TestGoldenBuildPDUSessionResourceModifyRequestTransfer(t *testing.T) {
@@ -106,10 +108,10 @@ func TestGoldenBuildPDUSessionResourceModifyRequestTransfer(t *testing.T) {
 
 	require.Equal(t, golden, got)
 
-	var decoded ngapType.PDUSessionResourceModifyRequestTransfer
-	require.NoError(t, aper.UnmarshalWithParams(golden, &decoded, "valueExt"))
+	var decoded ngapie.PDUSessionResourceModifyRequestTransfer
+	require.NoError(t, ngapie.UnmarshalBinary(golden, &decoded))
 	require.Len(t, decoded.ProtocolIEs.List, 1)
-	qosList := decoded.ProtocolIEs.List[0].Value.QosFlowAddOrModifyRequestList
+	qosList := decoded.ProtocolIEs.List[0].QosFlowAddOrModifyRequestList
 	require.NotNil(t, qosList)
 	require.Len(t, qosList.List, 1)
 	require.Equal(t, int64(2), qosList.List[0].QosFlowIdentifier.Value)
@@ -138,14 +140,15 @@ func TestGoldenBuildPDUSessionResourceModifyConfirmTransfer(t *testing.T) {
 
 	require.Equal(t, golden, got)
 
-	var decoded ngapType.PDUSessionResourceModifyConfirmTransfer
-	require.NoError(t, aper.UnmarshalWithParams(golden, &decoded, "valueExt"))
+	var decoded ngapie.PDUSessionResourceModifyConfirmTransfer
+	require.NoError(t, ngapie.UnmarshalBinary(golden, &decoded))
 	require.Len(t, decoded.QosFlowModifyConfirmList.List, 1)
 	require.Equal(t, int64(2), decoded.QosFlowModifyConfirmList.List[0].QosFlowIdentifier.Value)
-	require.NotNil(t, decoded.ULNGUUPTNLInformation.GTPTunnel)
-	require.Equal(t, aper.OctetString{0x00, 0x00, 0x01, 0x03}, decoded.ULNGUUPTNLInformation.GTPTunnel.GTPTEID.Value)
+	gtpTunnel, ok := decoded.ULNGUUPTNLInformation.Choice.(*ngapie.GTPTunnel)
+	require.True(t, ok)
+	require.Equal(t, aper.OctetString{0x00, 0x00, 0x01, 0x03}, gtpTunnel.GTPTEID.Value)
 	require.Equal(t, []byte(net.ParseIP("192.168.179.1").To4()),
-		decoded.ULNGUUPTNLInformation.GTPTunnel.TransportLayerAddress.Value.Bytes)
+		gtpTunnel.TransportLayerAddress.Value.Bytes)
 }
 
 func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
@@ -199,6 +202,14 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 		wantQosFlows   int
 		golden         []byte
 	}{
+		// Golden values updated for the new ngap module (accepted wire-format
+		// changes, verified against the generated criticality/order tables):
+		//  1. AdditionalULNGUUPTNLInformation criticality: the old SMF code set
+		//     ignore (0x40); the new library derives reject (0x00) from the
+		//     TS 38.413 ASN.1 definition.
+		//  2. The new library sorts protocol IEs into ASN.1 definition order,
+		//     so SecurityIndication (138) now precedes QosFlowSetupRequestList
+		//     (136) instead of following it.
 		{
 			name:           "WithoutUpSecurity",
 			setupContext:   newSetupContext(false),
@@ -208,7 +219,7 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 			golden: []byte{
 				0x00, 0x00, 0x05, 0x00, 0x82, 0x00, 0x08, 0x08, 0x01, 0x86, 0xa0, 0x20,
 				0x03, 0x0d, 0x40, 0x00, 0x8b, 0x00, 0x0a, 0x01, 0xf0, 0x7f, 0x00, 0x00,
-				0x08, 0x00, 0x00, 0x01, 0x01, 0x00, 0x7e, 0x40, 0x0a, 0x00, 0x1f, 0x7f,
+				0x08, 0x00, 0x00, 0x01, 0x01, 0x00, 0x7e, 0x00, 0x0a, 0x00, 0x1f, 0x7f,
 				0x00, 0x00, 0x08, 0x00, 0x00, 0x01, 0x02, 0x00, 0x86, 0x00, 0x01, 0x00,
 				0x00, 0x88, 0x00, 0x07, 0x00, 0x01, 0x00, 0x00, 0x09, 0x1c, 0x00,
 			},
@@ -222,10 +233,10 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 			golden: []byte{
 				0x00, 0x00, 0x06, 0x00, 0x82, 0x00, 0x08, 0x08, 0x01, 0x86, 0xa0, 0x20,
 				0x03, 0x0d, 0x40, 0x00, 0x8b, 0x00, 0x0a, 0x01, 0xf0, 0x7f, 0x00, 0x00,
-				0x08, 0x00, 0x00, 0x01, 0x01, 0x00, 0x7e, 0x40, 0x0a, 0x00, 0x1f, 0x7f,
+				0x08, 0x00, 0x00, 0x01, 0x01, 0x00, 0x7e, 0x00, 0x0a, 0x00, 0x1f, 0x7f,
 				0x00, 0x00, 0x08, 0x00, 0x00, 0x01, 0x02, 0x00, 0x86, 0x00, 0x01, 0x00,
-				0x00, 0x88, 0x00, 0x07, 0x00, 0x01, 0x00, 0x00, 0x09, 0x1c, 0x00, 0x00,
-				0x8a, 0x00, 0x02, 0x40, 0x20,
+				0x00, 0x8a, 0x00, 0x02, 0x40, 0x20, 0x00, 0x88, 0x00, 0x07, 0x00, 0x01,
+				0x00, 0x00, 0x09, 0x1c, 0x00,
 			},
 		},
 		{
@@ -237,7 +248,7 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 			golden: []byte{
 				0x00, 0x00, 0x05, 0x00, 0x82, 0x00, 0x08, 0x08, 0x01, 0x86, 0xa0, 0x20,
 				0x03, 0x0d, 0x40, 0x00, 0x8b, 0x00, 0x0a, 0x01, 0xf0, 0x7f, 0x00, 0x00,
-				0x08, 0x00, 0x00, 0x01, 0x01, 0x00, 0x7e, 0x40, 0x0a, 0x00, 0x1f, 0x7f,
+				0x08, 0x00, 0x00, 0x01, 0x01, 0x00, 0x7e, 0x00, 0x0a, 0x00, 0x1f, 0x7f,
 				0x00, 0x00, 0x08, 0x00, 0x00, 0x01, 0x02, 0x00, 0x86, 0x00, 0x01, 0x00,
 				0x00, 0x88, 0x00, 0x21, 0x04, 0x01, 0x00, 0x00, 0x09, 0x1c, 0x00, 0x24,
 				0x00, 0x00, 0x01, 0x1c, 0x00, 0x60, 0x0b, 0xeb, 0xc2, 0x00, 0x30, 0x08,
@@ -258,21 +269,24 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 
 			require.Equal(t, tc.golden, got)
 
-			var decoded ngapType.PDUSessionResourceSetupRequestTransfer
-			require.NoError(t, aper.UnmarshalWithParams(tc.golden, &decoded, "valueExt"))
+			var decoded ngapie.PDUSessionResourceSetupRequestTransfer
+			require.NoError(t, ngapie.UnmarshalBinary(tc.golden, &decoded))
 			require.Len(t, decoded.ProtocolIEs.List, tc.wantIEs)
 
 			var gotTEID aper.OctetString
-			var gotSecurity *ngapType.SecurityIndication
-			var gotQosList *ngapType.QosFlowSetupRequestList
-			for _, ie := range decoded.ProtocolIEs.List {
-				switch ie.Id.Value {
-				case ngapType.ProtocolIEIDULNGUUPTNLInformation:
-					gotTEID = ie.Value.ULNGUUPTNLInformation.GTPTunnel.GTPTEID.Value
-				case ngapType.ProtocolIEIDSecurityIndication:
-					gotSecurity = ie.Value.SecurityIndication
-				case ngapType.ProtocolIEIDQosFlowSetupRequestList:
-					gotQosList = ie.Value.QosFlowSetupRequestList
+			var gotSecurity *ngapie.SecurityIndication
+			var gotQosList *ngapie.QosFlowSetupRequestList
+			for _, transferIE := range decoded.ProtocolIEs.List {
+				if transferIE.ULNGUUPTNLInformation != nil {
+					gtpTunnel, ok := transferIE.ULNGUUPTNLInformation.Choice.(*ngapie.GTPTunnel)
+					require.True(t, ok)
+					gotTEID = gtpTunnel.GTPTEID.Value
+				}
+				if transferIE.SecurityIndication != nil {
+					gotSecurity = transferIE.SecurityIndication
+				}
+				if transferIE.QosFlowSetupRequestList != nil {
+					gotQosList = transferIE.QosFlowSetupRequestList
 				}
 			}
 			require.Equal(t, aper.OctetString{0x00, 0x00, 0x01, 0x01}, gotTEID)
@@ -290,12 +304,12 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 			}
 			if tc.withUpSecurity {
 				require.NotNil(t, gotSecurity)
-				require.Equal(t, ngapType.IntegrityProtectionIndicationPresentRequired,
+				require.Equal(t, ngapie.IntegrityProtectionIndicationPresentRequired,
 					gotSecurity.IntegrityProtectionIndication.Value)
-				require.Equal(t, ngapType.ConfidentialityProtectionIndicationPresentRequired,
+				require.Equal(t, ngapie.ConfidentialityProtectionIndicationPresentRequired,
 					gotSecurity.ConfidentialityProtectionIndication.Value)
 				require.NotNil(t, gotSecurity.MaximumIntegrityProtectedDataRateUL)
-				require.Equal(t, ngapType.MaximumIntegrityProtectedDataRatePresentMaximumUERate,
+				require.Equal(t, ngapie.MaximumIntegrityProtectedDataRatePresentMaximumUERate,
 					gotSecurity.MaximumIntegrityProtectedDataRateUL.Value)
 			} else {
 				require.Nil(t, gotSecurity)
@@ -359,17 +373,17 @@ func TestGoldenBuildPathSwitchRequestAcknowledgeTransfer(t *testing.T) {
 
 			require.Equal(t, tc.golden, got)
 
-			var decoded ngapType.PathSwitchRequestAcknowledgeTransfer
-			require.NoError(t, aper.UnmarshalWithParams(tc.golden, &decoded, "valueExt"))
+			var decoded ngapie.PathSwitchRequestAcknowledgeTransfer
+			require.NoError(t, ngapie.UnmarshalBinary(tc.golden, &decoded))
 			require.NotNil(t, decoded.ULNGUUPTNLInformation)
-			gtpTunnel := decoded.ULNGUUPTNLInformation.GTPTunnel
-			require.NotNil(t, gtpTunnel)
+			gtpTunnel, ok := decoded.ULNGUUPTNLInformation.Choice.(*ngapie.GTPTunnel)
+			require.True(t, ok)
 			require.Equal(t, aper.OctetString{0x00, 0x00, 0x10, 0x01}, gtpTunnel.GTPTEID.Value)
 			require.Equal(t, []byte(net.ParseIP("127.0.0.8").To4()),
 				gtpTunnel.TransportLayerAddress.Value.Bytes)
 			if tc.wantSecurityIndic {
 				require.NotNil(t, decoded.SecurityIndication)
-				require.Equal(t, ngapType.IntegrityProtectionIndicationPresentRequired,
+				require.Equal(t, ngapie.IntegrityProtectionIndicationPresentRequired,
 					decoded.SecurityIndication.IntegrityProtectionIndication.Value)
 			} else {
 				require.Nil(t, decoded.SecurityIndication)
@@ -383,16 +397,15 @@ func TestGoldenBuildHandoverCommandTransfer(t *testing.T) {
 		smContext := newGSMTestContext()
 		// zero value of DLForwardingType is IndirectForwarding: ALWAYS set it
 		smContext.DLForwardingType = DirectForwarding
-		smContext.DLDirectForwardingTunnel = &ngapType.UPTransportLayerInformation{
-			Present: ngapType.UPTransportLayerInformationPresentGTPTunnel,
-			GTPTunnel: &ngapType.GTPTunnel{
-				TransportLayerAddress: ngapType.TransportLayerAddress{
+		smContext.DLDirectForwardingTunnel = &ngapie.UPTransportLayerInformation{
+			Choice: &ngapie.GTPTunnel{
+				TransportLayerAddress: &ngapie.TransportLayerAddress{
 					Value: aper.BitString{
 						Bytes:     net.ParseIP("127.0.0.10").To4(),
 						BitLength: 32,
 					},
 				},
-				GTPTEID: ngapType.GTPTEID{Value: aper.OctetString{0x00, 0x00, 0x01, 0x04}},
+				GTPTEID: &ngapie.GTPTEID{Value: aper.OctetString{0x00, 0x00, 0x01, 0x04}},
 			},
 		}
 		return smContext
@@ -447,11 +460,11 @@ func TestGoldenBuildHandoverCommandTransfer(t *testing.T) {
 
 			require.Equal(t, tc.golden, got)
 
-			var decoded ngapType.HandoverCommandTransfer
-			require.NoError(t, aper.UnmarshalWithParams(tc.golden, &decoded, "valueExt"))
+			var decoded ngapie.HandoverCommandTransfer
+			require.NoError(t, ngapie.UnmarshalBinary(tc.golden, &decoded))
 			require.NotNil(t, decoded.DLForwardingUPTNLInformation)
-			gtpTunnel := decoded.DLForwardingUPTNLInformation.GTPTunnel
-			require.NotNil(t, gtpTunnel)
+			gtpTunnel, ok := decoded.DLForwardingUPTNLInformation.Choice.(*ngapie.GTPTunnel)
+			require.True(t, ok)
 			require.Equal(t, tc.wantTEID, gtpTunnel.GTPTEID.Value)
 			require.Equal(t, []byte(net.ParseIP(tc.wantIP).To4()),
 				gtpTunnel.TransportLayerAddress.Value.Bytes)

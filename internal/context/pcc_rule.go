@@ -3,11 +3,10 @@ package context
 import (
 	"fmt"
 	"net"
-	"strconv"
 
 	"github.com/pkg/errors"
 
-	"github.com/free5gc/nas/nasType"
+	nasie "github.com/free5gc/nas/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/smf/internal/logger"
 	"github.com/free5gc/smf/pkg/factory"
@@ -161,17 +160,17 @@ func (r *PCCRule) AddDataPathForwardingParametersOnDcTunnel(c *SMContext,
 }
 
 func (r *PCCRule) BuildNasQoSRule(smCtx *SMContext,
-	opCode nasType.QoSRuleOperationCode,
-) (*nasType.QoSRule, error) {
-	rule := nasType.QoSRule{}
-	rule.Operation = opCode
+	opCode nasie.QosRuleOpCode,
+) (*nasie.QosRule, error) {
+	rule := nasie.QosRule{}
+	rule.OpCode = opCode
 	rule.Precedence = uint8(r.Precedence)
 	rule.QFI = r.QFI
-	if opCode == nasType.OperationCodeDeleteExistingQoSRule ||
-		opCode == nasType.OperationCodeModifyExistingQoSRuleWithoutModifyingPacketFilters {
+	if opCode == nasie.OpCode_DelExistingQosRule ||
+		opCode == nasie.OpCode_ModifyWoModifyingPktFilters {
 		return &rule, nil
 	}
-	pfList := make(nasType.PacketFilterList, 0)
+	pfList := make([]nasie.PacketFilter, 0)
 	for _, flowInfo := range r.FlowInfos {
 		if pfs, err := BuildNASPacketFiltersFromFlowInformation(&flowInfo, smCtx); err != nil {
 			logger.CtxLog.Warnf("BuildNasQoSRule: Build packet filter fail: %s\n", err)
@@ -180,9 +179,19 @@ func (r *PCCRule) BuildNasQoSRule(smCtx *SMContext,
 			pfList = append(pfList, pfs...)
 		}
 	}
-	rule.PacketFilterList = pfList
+	rule.PktFilterList = pfList
 
 	return &rule, nil
+}
+
+func portRangeToString(p *flowdesc.PortRange) string {
+	if p == nil || (p.Start == 0 && p.End == 0) {
+		return ""
+	}
+	if p.Start == p.End {
+		return fmt.Sprintf("%d", p.Start)
+	}
+	return fmt.Sprintf("%d-%d", p.Start, p.End)
 }
 
 func createNasPacketFilter(
@@ -191,121 +200,65 @@ func createNasPacketFilter(
 	ipFilterRule *flowdesc.IPFilterRule,
 	srcP *flowdesc.PortRange,
 	dstP *flowdesc.PortRange,
-) (*nasType.PacketFilter, error) {
-	pf := new(nasType.PacketFilter)
+) (*nasie.PacketFilter, error) {
+	pf := new(nasie.PacketFilter)
 
 	pfId, errAllocate := smCtx.PacketFilterIDGenerator.Allocate()
 	if errAllocate != nil {
 		return nil, errAllocate
 	}
-	pf.Identifier = uint8(pfId)
+	pf.Id = uint8(pfId)
 	smCtx.PacketFilterIDToNASPFID[pfInfo.PackFiltId] = uint8(pfId)
 
 	switch pfInfo.FlowDirection {
 	case models.FlowDirection_DOWNLINK:
-		pf.Direction = nasType.PacketFilterDirectionDownlink
+		pf.Dir = nasie.PFD_Downlink
 	case models.FlowDirection_UPLINK:
-		pf.Direction = nasType.PacketFilterDirectionUplink
+		pf.Dir = nasie.PFD_Uplink
 	case models.FlowDirection_BIDIRECTIONAL:
-		pf.Direction = nasType.PacketFilterDirectionBidirectional
+		pf.Dir = nasie.PFD_BiDir
 	}
 
-	pfComponents := make(nasType.PacketFilterComponentList, 0)
-	if pfInfo.FlowLabel != "" {
-		if label, parseErr := strconv.ParseInt(pfInfo.FlowLabel, 16, 32); parseErr != nil {
-			return nil, fmt.Errorf("parse flow label fail: %s", parseErr)
-		} else {
-			pfComponents = append(pfComponents, &nasType.PacketFilterFlowLabel{
-				Label: uint32(label),
-			})
-		}
+	// "any"/"assigned" mark the address components as absent (see ie.PacketFilterContents).
+	contents := nasie.PacketFilterContents{
+		RemoteAddr: "any",
+		LocalAddr:  "assigned",
 	}
 
-	if pfInfo.Spi != "" {
-		if spi, parseErr := strconv.ParseInt(pfInfo.Spi, 16, 32); parseErr != nil {
-			return nil, fmt.Errorf("parse security parameter index fail: %s", parseErr)
-		} else {
-			pfComponents = append(pfComponents, &nasType.PacketFilterSecurityParameterIndex{
-				Index: uint32(spi),
-			})
-		}
-	}
-
-	if pfInfo.TosTrafficClass != "" {
-		if tos, parseErr := strconv.ParseInt(pfInfo.TosTrafficClass, 16, 32); parseErr != nil {
-			return nil, fmt.Errorf("parse security parameter index fail: %s", parseErr)
-		} else {
-			pfComponents = append(pfComponents, &nasType.PacketFilterServiceClass{
-				Class: uint8(tos >> 8),
-				Mask:  uint8(tos & 0x00FF),
-			})
-		}
-	}
+	// FlowLabel, Spi and TosTrafficClass are kept in their hex string form.
+	contents.FlowLabel = pfInfo.FlowLabel
+	contents.SPI = pfInfo.Spi
+	contents.TosTrafficClass = pfInfo.TosTrafficClass
 
 	if ipFilterRule.Dst != "assigned" {
-		_, ipNet, errParseCIDR := net.ParseCIDR(ipFilterRule.Dst)
-		if errParseCIDR != nil {
+		if _, _, errParseCIDR := net.ParseCIDR(ipFilterRule.Dst); errParseCIDR != nil {
 			return nil, fmt.Errorf("parse IP fail: %s", errParseCIDR)
 		}
-		pfComponents = append(pfComponents, &nasType.PacketFilterIPv4LocalAddress{
-			Address: ipNet.IP.To4(),
-			Mask:    ipNet.Mask,
-		})
+		contents.LocalAddr = ipFilterRule.Dst
 	}
-	if dstP != nil {
-		if dstP.Start != dstP.End {
-			pfComponents = append(pfComponents, &nasType.PacketFilterLocalPortRange{
-				LowLimit:  dstP.Start,
-				HighLimit: dstP.End,
-			})
-		} else if dstP.Start != 0 && dstP.End != 0 {
-			pfComponents = append(pfComponents, &nasType.PacketFilterSingleLocalPort{
-				Value: dstP.Start,
-			})
-		}
-	}
+	contents.LocalPortRange = portRangeToString(dstP)
 
 	if ipFilterRule.Src != "any" {
-		_, ipNet, errParseCIDR := net.ParseCIDR(ipFilterRule.Src)
-		if errParseCIDR != nil {
+		if _, _, errParseCIDR := net.ParseCIDR(ipFilterRule.Src); errParseCIDR != nil {
 			return nil, fmt.Errorf("parse IP fail: %s", errParseCIDR)
 		}
-		pfComponents = append(pfComponents, &nasType.PacketFilterIPv4RemoteAddress{
-			Address: ipNet.IP.To4(),
-			Mask:    ipNet.Mask,
-		})
+		contents.RemoteAddr = ipFilterRule.Src
 	}
-	if srcP != nil {
-		if srcP.Start != srcP.End {
-			pfComponents = append(pfComponents, &nasType.PacketFilterRemotePortRange{
-				LowLimit:  srcP.Start,
-				HighLimit: srcP.End,
-			})
-		} else if srcP.Start != 0 && srcP.End != 0 {
-			pfComponents = append(pfComponents, &nasType.PacketFilterSingleRemotePort{
-				Value: srcP.Start,
-			})
-		}
-	}
+	contents.RemotePortRange = portRangeToString(srcP)
 
 	if ipFilterRule.Proto != flowdesc.ProtocolNumberAny {
-		pfComponents = append(pfComponents, &nasType.PacketFilterProtocolIdentifier{
-			Value: ipFilterRule.Proto,
-		})
+		contents.HavePIorNH = true
+		contents.PIorNH = ipFilterRule.Proto
 	}
 
-	if len(pfComponents) == 0 {
-		pfComponents = append(pfComponents, &nasType.PacketFilterMatchAll{})
-	}
-
-	pf.Components = pfComponents
+	pf.Contents = contents
 	return pf, nil
 }
 
 func BuildNASPacketFiltersFromFlowInformation(pfInfo *models.FlowInformation,
 	smCtx *SMContext,
-) ([]nasType.PacketFilter, error) {
-	var pfList []nasType.PacketFilter
+) ([]nasie.PacketFilter, error) {
+	var pfList []nasie.PacketFilter
 
 	ipFilterRule := flowdesc.NewIPFilterRule()
 	if pfInfo.FlowDescription != "" {

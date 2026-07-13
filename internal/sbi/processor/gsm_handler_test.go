@@ -1,31 +1,45 @@
 package processor_test
 
 import (
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/free5gc/nas/nasType"
+	nasie "github.com/free5gc/nas/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/util/idgenerator"
 )
 
+// contents builds an ie.PacketFilterContents with the "absent" sentinels the
+// SMF packet filter builder always sets ("any"/"assigned").
+func contents(remoteAddr, remotePorts, localAddr, localPorts string) nasie.PacketFilterContents {
+	if remoteAddr == "" {
+		remoteAddr = "any"
+	}
+	if localAddr == "" {
+		localAddr = "assigned"
+	}
+	return nasie.PacketFilterContents{
+		RemoteAddr:      remoteAddr,
+		RemotePortRange: remotePorts,
+		LocalAddr:       localAddr,
+		LocalPortRange:  localPorts,
+	}
+}
+
 func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 	testCases := []struct {
 		name         string
-		packetFilter []nasType.PacketFilter
+		packetFilter []nasie.PacketFilter
 		flowInfo     models.FlowInformation
 	}{
 		{
 			name: "MatchAll",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionBidirectional,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterMatchAll{},
-					},
+					Dir:      nasie.PFD_BiDir,
+					Contents: contents("", "", "", ""),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -35,15 +49,10 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 		},
 		{
 			name: "MatchIPNet1",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionUplink,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-					},
+					Dir:      nasie.PFD_Uplink,
+					Contents: contents("", "", "192.168.0.0/16", ""),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -53,19 +62,10 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 		},
 		{
 			name: "MatchIPNet2",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionBidirectional,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-					},
+					Dir:      nasie.PFD_BiDir,
+					Contents: contents("10.160.20.0/24", "", "192.168.0.0/16", ""),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -75,22 +75,10 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 		},
 		{
 			name: "MatchIPNetPort",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionBidirectional,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterSingleLocalPort{
-							Value: 8000,
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-					},
+					Dir:      nasie.PFD_BiDir,
+					Contents: contents("10.160.20.0/24", "", "192.168.0.0/16", "8000"),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -100,23 +88,10 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 		},
 		{
 			name: "MatchIPNetPortRanges",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionDownlink,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterLocalPortRange{
-							LowLimit:  3000,
-							HighLimit: 8000,
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-					},
+					Dir:      nasie.PFD_Downlink,
+					Contents: contents("10.160.20.0/24", "", "192.168.0.0/16", "3000-8000"),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -126,27 +101,10 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 		},
 		{
 			name: "MatchIPNetPortRanges2",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionDownlink,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterLocalPortRange{
-							LowLimit:  6000,
-							HighLimit: 8000,
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-						&nasType.PacketFilterRemotePortRange{
-							LowLimit:  3000,
-							HighLimit: 4000,
-						},
-					},
+					Dir:      nasie.PFD_Downlink,
+					Contents: contents("10.160.20.0/24", "3000-4000", "192.168.0.0/16", "6000-8000"),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -156,47 +114,14 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 		},
 		{
 			name: "MatchIPNetPortRanges3",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionDownlink,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterLocalPortRange{
-							LowLimit:  6000,
-							HighLimit: 7000,
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-						&nasType.PacketFilterRemotePortRange{
-							LowLimit:  3000,
-							HighLimit: 4000,
-						},
-					},
+					Dir:      nasie.PFD_Downlink,
+					Contents: contents("10.160.20.0/24", "3000-4000", "192.168.0.0/16", "6000-7000"),
 				},
 				{
-					Direction: nasType.PacketFilterDirectionDownlink,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterSingleLocalPort{
-							Value: 8000,
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-						&nasType.PacketFilterRemotePortRange{
-							LowLimit:  3000,
-							HighLimit: 4000,
-						},
-					},
+					Dir:      nasie.PFD_Downlink,
+					Contents: contents("10.160.20.0/24", "3000-4000", "192.168.0.0/16", "8000"),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -206,47 +131,14 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 		},
 		{
 			name: "MatchIPNetPortRanges4",
-			packetFilter: []nasType.PacketFilter{
+			packetFilter: []nasie.PacketFilter{
 				{
-					Direction: nasType.PacketFilterDirectionDownlink,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterLocalPortRange{
-							LowLimit:  6000,
-							HighLimit: 7000,
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-						&nasType.PacketFilterRemotePortRange{
-							LowLimit:  3000,
-							HighLimit: 4000,
-						},
-					},
+					Dir:      nasie.PFD_Downlink,
+					Contents: contents("10.160.20.0/24", "3000-4000", "192.168.0.0/16", "6000-7000"),
 				},
 				{
-					Direction: nasType.PacketFilterDirectionDownlink,
-					Components: nasType.PacketFilterComponentList{
-						&nasType.PacketFilterIPv4LocalAddress{
-							Address: net.ParseIP("192.168.0.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 0, 0),
-						},
-						&nasType.PacketFilterLocalPortRange{
-							LowLimit:  6000,
-							HighLimit: 7000,
-						},
-						&nasType.PacketFilterIPv4RemoteAddress{
-							Address: net.ParseIP("10.160.20.0").To4(),
-							Mask:    net.IPv4Mask(255, 255, 255, 0),
-						},
-						&nasType.PacketFilterSingleRemotePort{
-							Value: 5000,
-						},
-					},
+					Dir:      nasie.PFD_Downlink,
+					Contents: contents("10.160.20.0/24", "5000", "192.168.0.0/16", "6000-7000"),
 				},
 			},
 			flowInfo: models.FlowInformation{
@@ -265,9 +157,10 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 			packetFilters, err := context.BuildNASPacketFiltersFromFlowInformation(&tc.flowInfo, smCtx)
 			require.NoError(t, err)
 
+			require.Len(t, packetFilters, len(tc.packetFilter))
 			for i, pf := range packetFilters {
-				require.Equal(t, tc.packetFilter[i].Direction, pf.Direction)
-				require.Equal(t, tc.packetFilter[i].Components, pf.Components)
+				require.Equal(t, tc.packetFilter[i].Dir, pf.Dir)
+				require.Equal(t, tc.packetFilter[i].Contents, pf.Contents)
 			}
 		})
 	}

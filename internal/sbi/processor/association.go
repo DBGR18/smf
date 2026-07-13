@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/free5gc/nas/nasMessage"
+	nasie "github.com/free5gc/nas/ie"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp"
 	"github.com/free5gc/pfcp/pfcpType"
@@ -189,7 +189,7 @@ func (p *Processor) requestAMFToReleasePDUResources(
 		PduSessionId: smContext.PDUSessionID,
 		SkipInd:      true,
 	}
-	cause := nasMessage.Cause5GSMNetworkFailure
+	cause := nasie.Cause5GSM_NwFailure
 	if buf, err := smf_context.BuildGSMPDUSessionReleaseCommand(smContext, cause, false); err != nil {
 		logger.MainLog.Errorf("Build GSM PDUSessionReleaseCommand failed: %+v", err)
 	} else {

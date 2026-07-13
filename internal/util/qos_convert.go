@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/free5gc/ngap/ngapType"
+	ngapie "github.com/free5gc/ngap/ie"
 	"github.com/free5gc/smf/internal/logger"
 )
 
@@ -75,13 +75,13 @@ func BitRateTombps(bitrate string) uint16 {
 	return mbps
 }
 
-func StringToBitRate(bitrate string) ngapType.BitRate {
+func StringToBitRate(bitrate string) ngapie.BitRate {
 	s := strings.Split(bitrate, " ")
 
 	var digit int
 
 	if n, err := strconv.Atoi(s[0]); err != nil {
-		return ngapType.BitRate{Value: 0}
+		return ngapie.BitRate{Value: 0}
 	} else {
 		digit = n
 	}
@@ -98,5 +98,5 @@ func StringToBitRate(bitrate string) ngapType.BitRate {
 		digit = (digit * 1000000000000)
 	}
 
-	return ngapType.BitRate{Value: int64(digit)}
+	return ngapie.BitRate{Value: int64(digit)}
 }

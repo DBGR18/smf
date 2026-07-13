@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/free5gc/nas/nasConvert"
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/chf/ConvergedCharging"
 	"github.com/free5gc/openapi/models"
@@ -83,7 +82,7 @@ func (s *nchfService) buildConvergedChargingRequest(smContext *smf_context.SMCon
 					SNSSAI: smContext.SNssai,
 				},
 
-				PduType: nasConvert.PDUSessionTypeToModels(smContext.SelectedPDUSessionType),
+				PduType: smf_context.PDUSessionTypeToModels(smContext.SelectedPDUSessionType),
 				ServingNetworkFunctionID: &models.ChfConvergedChargingServingNetworkFunctionId{
 					ServingNetworkFunctionInformation: &models.ChfConvergedChargingNfIdentification{
 						NodeFunctionality: models.ChfConvergedChargingNodeFunctionality_AMF,
