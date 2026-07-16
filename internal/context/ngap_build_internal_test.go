@@ -169,11 +169,34 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 		}
 	}
 
+	newGBRSetupContext := func() *SMContext {
+		smContext := newSetupContext(false)()
+		// exactly ONE additional flow (map iteration order!) with a standard
+		// GBR 5QI: exercises BuildNgapQosFlowSetupRequestItem and the
+		// GBRQosInformation branch (bitrate-string conversion included)
+		smContext.AdditionalQosFlows = map[uint8]*QoSFlow{
+			2: NewQoSFlow(2, &models.QosData{
+				Var5qi:  1,
+				GbrDl:   "100 Mbps",
+				GbrUl:   "50 Mbps",
+				MaxbrDl: "200 Mbps",
+				MaxbrUl: "150 Mbps",
+				Arp: &models.Arp{
+					PriorityLevel: 8,
+					PreemptCap:    models.PreemptionCapability_NOT_PREEMPT,
+					PreemptVuln:   models.PreemptionVulnerability_NOT_PREEMPTABLE,
+				},
+			}),
+		}
+		return smContext
+	}
+
 	testCases := []struct {
 		name           string
 		setupContext   func() *SMContext
 		withUpSecurity bool
 		wantIEs        int
+		wantQosFlows   int
 		golden         []byte
 	}{
 		{
@@ -181,6 +204,7 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 			setupContext:   newSetupContext(false),
 			withUpSecurity: false,
 			wantIEs:        5,
+			wantQosFlows:   1,
 			golden: []byte{
 				0x00, 0x00, 0x05, 0x00, 0x82, 0x00, 0x08, 0x08, 0x01, 0x86, 0xa0, 0x20,
 				0x03, 0x0d, 0x40, 0x00, 0x8b, 0x00, 0x0a, 0x01, 0xf0, 0x7f, 0x00, 0x00,
@@ -194,6 +218,7 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 			setupContext:   newSetupContext(true),
 			withUpSecurity: true,
 			wantIEs:        6,
+			wantQosFlows:   1,
 			golden: []byte{
 				0x00, 0x00, 0x06, 0x00, 0x82, 0x00, 0x08, 0x08, 0x01, 0x86, 0xa0, 0x20,
 				0x03, 0x0d, 0x40, 0x00, 0x8b, 0x00, 0x0a, 0x01, 0xf0, 0x7f, 0x00, 0x00,
@@ -201,6 +226,23 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 				0x00, 0x00, 0x08, 0x00, 0x00, 0x01, 0x02, 0x00, 0x86, 0x00, 0x01, 0x00,
 				0x00, 0x88, 0x00, 0x07, 0x00, 0x01, 0x00, 0x00, 0x09, 0x1c, 0x00, 0x00,
 				0x8a, 0x00, 0x02, 0x40, 0x20,
+			},
+		},
+		{
+			name:           "WithGBRAdditionalQosFlow",
+			setupContext:   newGBRSetupContext,
+			withUpSecurity: false,
+			wantIEs:        5,
+			wantQosFlows:   2,
+			golden: []byte{
+				0x00, 0x00, 0x05, 0x00, 0x82, 0x00, 0x08, 0x08, 0x01, 0x86, 0xa0, 0x20,
+				0x03, 0x0d, 0x40, 0x00, 0x8b, 0x00, 0x0a, 0x01, 0xf0, 0x7f, 0x00, 0x00,
+				0x08, 0x00, 0x00, 0x01, 0x01, 0x00, 0x7e, 0x40, 0x0a, 0x00, 0x1f, 0x7f,
+				0x00, 0x00, 0x08, 0x00, 0x00, 0x01, 0x02, 0x00, 0x86, 0x00, 0x01, 0x00,
+				0x00, 0x88, 0x00, 0x21, 0x04, 0x01, 0x00, 0x00, 0x09, 0x1c, 0x00, 0x24,
+				0x00, 0x00, 0x01, 0x1c, 0x00, 0x60, 0x0b, 0xeb, 0xc2, 0x00, 0x30, 0x08,
+				0xf0, 0xd1, 0x80, 0x30, 0x05, 0xf5, 0xe1, 0x00, 0x30, 0x02, 0xfa, 0xf0,
+				0x80,
 			},
 		},
 	}
@@ -222,15 +264,30 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 
 			var gotTEID aper.OctetString
 			var gotSecurity *ngapType.SecurityIndication
+			var gotQosList *ngapType.QosFlowSetupRequestList
 			for _, ie := range decoded.ProtocolIEs.List {
 				switch ie.Id.Value {
 				case ngapType.ProtocolIEIDULNGUUPTNLInformation:
 					gotTEID = ie.Value.ULNGUUPTNLInformation.GTPTunnel.GTPTEID.Value
 				case ngapType.ProtocolIEIDSecurityIndication:
 					gotSecurity = ie.Value.SecurityIndication
+				case ngapType.ProtocolIEIDQosFlowSetupRequestList:
+					gotQosList = ie.Value.QosFlowSetupRequestList
 				}
 			}
 			require.Equal(t, aper.OctetString{0x00, 0x00, 0x01, 0x01}, gotTEID)
+			require.NotNil(t, gotQosList)
+			require.Len(t, gotQosList.List, tc.wantQosFlows)
+			if tc.wantQosFlows > 1 {
+				gbrItem := gotQosList.List[1]
+				require.Equal(t, int64(2), gbrItem.QosFlowIdentifier.Value)
+				gbrInfo := gbrItem.QosFlowLevelQosParameters.GBRQosInformation
+				require.NotNil(t, gbrInfo)
+				require.Equal(t, int64(200000000), gbrInfo.MaximumFlowBitRateDL.Value)
+				require.Equal(t, int64(150000000), gbrInfo.MaximumFlowBitRateUL.Value)
+				require.Equal(t, int64(100000000), gbrInfo.GuaranteedFlowBitRateDL.Value)
+				require.Equal(t, int64(50000000), gbrInfo.GuaranteedFlowBitRateUL.Value)
+			}
 			if tc.withUpSecurity {
 				require.NotNil(t, gotSecurity)
 				require.Equal(t, ngapType.IntegrityProtectionIndicationPresentRequired,
