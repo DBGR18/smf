@@ -34,7 +34,7 @@ func (lc *LogCapture) String() string {
 // }
 
 func TestHandlePfcpManagementRequest(t *testing.T) {
-	re := regexp.MustCompile(`(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}Z)(.*)`)
+	re := regexp.MustCompile(`(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}(?:Z|[+-]\d{2}:\d{2}))(.*)`)
 	Convey("Test log message", t, func() {
 		remoteAddr := &net.UDPAddr{}
 		testPfcpReq := &pfcp.Message{}
@@ -53,7 +53,7 @@ func TestHandlePfcpManagementRequest(t *testing.T) {
 }
 
 func TestHandlePfcpAssociationSetupRequest(t *testing.T) {
-	re := regexp.MustCompile(`(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}Z)(.*)`)
+	re := regexp.MustCompile(`(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}(?:Z|[+-]\d{2}:\d{2}))(.*)`)
 	re2 := regexp.MustCompile(`(.*)\n(.*)`)
 	Convey("Test if NodeID is Nil", t, func() {
 		remoteAddr := &net.UDPAddr{
@@ -143,7 +143,7 @@ func TestHandlePfcpAssociationSetupRequest(t *testing.T) {
 }
 
 func TestHandlePfcpAssociationUpdateRequest(t *testing.T) {
-	re := regexp.MustCompile(`(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}Z)(.*)`)
+	re := regexp.MustCompile(`(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}(?:Z|[+-]\d{2}:\d{2}))(.*)`)
 	Convey("Test logger message", t, func() {
 		remoteAddr := &net.UDPAddr{}
 		testPfcpReq := &pfcp.Message{}
