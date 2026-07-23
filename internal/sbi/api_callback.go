@@ -36,7 +36,7 @@ func (s *Server) getCallbackRoutes() []Route {
 
 // SubscriptionsPost -
 func (s *Server) HTTPSmPolicyUpdateNotification(c *gin.Context) {
-	var request models.SmPolicyNotification
+	var request models.Pcf_SMPolCtrl_SmPolicyNotification
 
 	reqBody, err := c.GetRawData()
 	if err != nil {
@@ -57,7 +57,7 @@ func (s *Server) SmPolicyControlTerminationRequestNotification(c *gin.Context) {
 }
 
 func (s *Server) HTTPChargingNotification(c *gin.Context) {
-	var req models.ChargingNotifyRequest
+	var req models.Chf_ConvCharging_ChargingNotifyRequest
 
 	requestBody, err := c.GetRawData()
 	if err != nil {

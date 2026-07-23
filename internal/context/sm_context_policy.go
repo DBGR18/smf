@@ -20,7 +20,7 @@ func (c *SMContext) SelectedSessionRule() *SessionRule {
 }
 
 func (c *SMContext) ApplySessionRules(
-	decision *models.SmPolicyDecision,
+	decision *models.Pcf_SMPolCtrl_SmPolicyDecision,
 ) error {
 	if decision == nil {
 		return fmt.Errorf("SmPolicyDecision is nil")
@@ -33,7 +33,7 @@ func (c *SMContext) ApplySessionRules(
 		} else {
 			if origRule, ok := c.SessionRules[id]; ok {
 				c.Log.Debugf("Modify SessionRule[%s]: %+v", id, r)
-				origRule.SessionRule = r
+				origRule.Pcf_SMPolCtrl_SessionRule = r
 			} else {
 				c.Log.Debugf("Install SessionRule[%s]: %+v", id, r)
 				c.SessionRules[id] = NewSessionRule(r)
@@ -58,7 +58,7 @@ func (c *SMContext) ApplySessionRules(
 	return nil
 }
 
-func (c *SMContext) AddQosFlow(qfi uint8, qos *models.QosData) {
+func (c *SMContext) AddQosFlow(qfi uint8, qos *models.Pcf_SMPolCtrl_QosData) {
 	qosFlow := NewQoSFlow(qfi, qos)
 	if qosFlow != nil {
 		c.AdditionalQosFlows[qfi] = qosFlow
@@ -69,15 +69,15 @@ func (c *SMContext) RemoveQosFlow(qfi uint8) {
 	delete(c.AdditionalQosFlows, qfi)
 }
 
-func (c *SMContext) ApplyPccRules(decision *models.SmPolicyDecision) error {
+func (c *SMContext) ApplyPccRules(decision *models.Pcf_SMPolCtrl_SmPolicyDecision) error {
 	if decision == nil {
 		return fmt.Errorf("SmPolicyDecision is nil")
 	}
 
 	finalPccRules := make(map[string]*PCCRule)
 	finalTcDatas := make(map[string]*TrafficControlData)
-	finalQosDatas := make(map[string]*models.QosData)
-	finalChgDatas := make(map[string]*models.ChargingData)
+	finalQosDatas := make(map[string]*models.Pcf_SMPolCtrl_QosData)
+	finalChgDatas := make(map[string]*models.Pcf_SMPolCtrl_ChargingData)
 
 	// Handle QoSData Deletion
 	for id, qos := range decision.QosDecs {
@@ -105,7 +105,7 @@ func (c *SMContext) ApplyPccRules(decision *models.SmPolicyDecision) error {
 	}
 
 	// Shared logic for processing each rule in Pass 1 and Pass 2
-	processRule := func(id string, tgtPcc *PCCRule, pduChgDatas []*models.ChargingData) error {
+	processRule := func(id string, tgtPcc *PCCRule, pduChgDatas []*models.Pcf_SMPolCtrl_ChargingData) error {
 		tgtTcID := tgtPcc.RefTcDataID()
 		_, tgtTcData := c.getSrcTgtTcData(decision.TraffContDecs, tgtTcID)
 		tgtChgID := tgtPcc.RefChgDataID()
@@ -222,7 +222,7 @@ func (c *SMContext) ApplyPccRules(decision *models.SmPolicyDecision) error {
 	}
 
 	// Collect PDU-level charging data from rules created in Pass 1
-	var pduChgDatas []*models.ChargingData
+	var pduChgDatas []*models.Pcf_SMPolCtrl_ChargingData
 	for _, pcc := range finalPccRules {
 		if chgLevel, err := pcc.IdentifyChargingLevel(); err == nil && chgLevel == PduSessionCharging && pcc.Datapath != nil {
 			chgID := pcc.RefChgDataID()
@@ -260,8 +260,8 @@ func (c *SMContext) ApplyDcPccRulesOnDcTunnel() error {
 		}
 
 		newPcc := &PCCRule{
-			PccRule: &models.PccRule{
-				FlowInfos:       make([]models.FlowInformation, len(pcc.FlowInfos)),
+			Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
+				FlowInfos:       make([]models.Pcf_SMPolCtrl_FlowInformation, len(pcc.FlowInfos)),
 				AppId:           pcc.AppId,
 				AppDescriptor:   pcc.AppDescriptor,
 				ContVer:         pcc.ContVer,
@@ -289,7 +289,7 @@ func (c *SMContext) ApplyDcPccRulesOnDcTunnel() error {
 		}
 
 		if pcc.TscaiInputDl != nil {
-			newPcc.TscaiInputDl = &models.TscaiInputContainer{
+			newPcc.TscaiInputDl = &models.Pcf_PolAuth_TscaiInputContainer{
 				Periodicity:      pcc.TscaiInputDl.Periodicity,
 				BurstArrivalTime: pcc.TscaiInputDl.BurstArrivalTime,
 				SurTimeInNumMsg:  pcc.TscaiInputDl.SurTimeInNumMsg,
@@ -297,7 +297,7 @@ func (c *SMContext) ApplyDcPccRulesOnDcTunnel() error {
 			}
 		}
 		if pcc.TscaiInputUl != nil {
-			newPcc.TscaiInputUl = &models.TscaiInputContainer{
+			newPcc.TscaiInputUl = &models.Pcf_PolAuth_TscaiInputContainer{
 				Periodicity:      pcc.TscaiInputUl.Periodicity,
 				BurstArrivalTime: pcc.TscaiInputUl.BurstArrivalTime,
 				SurTimeInNumMsg:  pcc.TscaiInputUl.SurTimeInNumMsg,
@@ -315,16 +315,16 @@ func (c *SMContext) ApplyDcPccRulesOnDcTunnel() error {
 		copy(newPcc.RefAltQosParams, pcc.RefAltQosParams)
 
 		if pcc.DdNotifCtrl != nil {
-			newPcc.DdNotifCtrl = &models.DownlinkDataNotificationControl{
-				NotifCtrlInds: make([]models.NotificationControlIndication, len(pcc.DdNotifCtrl.NotifCtrlInds)),
+			newPcc.DdNotifCtrl = &models.Pcf_SMPolCtrl_DownlinkDataNotificationControl{
+				NotifCtrlInds: make([]models.Pcf_SMPolCtrl_NotificationControlIndication, len(pcc.DdNotifCtrl.NotifCtrlInds)),
 				TypesOfNotif:  make([]models.DlDataDeliveryStatus, len(pcc.DdNotifCtrl.TypesOfNotif)),
 			}
 			copy(newPcc.DdNotifCtrl.NotifCtrlInds, pcc.DdNotifCtrl.NotifCtrlInds)
 			copy(newPcc.DdNotifCtrl.TypesOfNotif, pcc.DdNotifCtrl.TypesOfNotif)
 		}
 		if pcc.DdNotifCtrl2 != nil {
-			newPcc.DdNotifCtrl2 = &models.DownlinkDataNotificationControlRm{
-				NotifCtrlInds: make([]models.NotificationControlIndication, len(pcc.DdNotifCtrl2.NotifCtrlInds)),
+			newPcc.DdNotifCtrl2 = &models.Pcf_SMPolCtrl_DownlinkDataNotificationControlRm{
+				NotifCtrlInds: make([]models.Pcf_SMPolCtrl_NotificationControlIndication, len(pcc.DdNotifCtrl2.NotifCtrlInds)),
 				TypesOfNotif:  make([]models.DlDataDeliveryStatus, len(pcc.DdNotifCtrl2.TypesOfNotif)),
 			}
 			copy(newPcc.DdNotifCtrl2.NotifCtrlInds, pcc.DdNotifCtrl2.NotifCtrlInds)
@@ -333,7 +333,7 @@ func (c *SMContext) ApplyDcPccRulesOnDcTunnel() error {
 
 		c.DCPCCRules[id] = newPcc
 	}
-	var pduChgDatas []*models.ChargingData
+	var pduChgDatas []*models.Pcf_SMPolCtrl_ChargingData
 
 	// ==========================================================
 	// Pass 1: Pdu Session level charging rules of DC tunnel (pduLevelUrrs = nil)
@@ -418,7 +418,7 @@ func (c *SMContext) ApplyDcPccRulesOnDcTunnel() error {
 }
 
 func (c *SMContext) getSrcTgtTcData(
-	decisionTcDecs map[string]*models.TrafficControlData,
+	decisionTcDecs map[string]*models.Pcf_SMPolCtrl_TrafficControlData,
 	tcID string,
 ) (*TrafficControlData, *TrafficControlData) {
 	if tcID == "" {
@@ -435,9 +435,9 @@ func (c *SMContext) getSrcTgtTcData(
 }
 
 func (c *SMContext) getSrcTgtChgData(
-	decisionChgDecs map[string]*models.ChargingData,
+	decisionChgDecs map[string]*models.Pcf_SMPolCtrl_ChargingData,
 	chgID string,
-) (*models.ChargingData, *models.ChargingData) {
+) (*models.Pcf_SMPolCtrl_ChargingData, *models.Pcf_SMPolCtrl_ChargingData) {
 	if chgID == "" {
 		return nil, nil
 	}
@@ -452,9 +452,9 @@ func (c *SMContext) getSrcTgtChgData(
 }
 
 func (c *SMContext) getSrcTgtQosData(
-	decisionQosDecs map[string]*models.QosData,
+	decisionQosDecs map[string]*models.Pcf_SMPolCtrl_QosData,
 	qosID string,
-) (*models.QosData, *models.QosData) {
+) (*models.Pcf_SMPolCtrl_QosData, *models.Pcf_SMPolCtrl_QosData) {
 	if qosID == "" {
 		return nil, nil
 	}
@@ -533,7 +533,7 @@ func checkUpPathChangeEvt(c *SMContext,
 	srcTcData, tgtTcData *TrafficControlData,
 ) error {
 	var srcRoute, tgtRoute models.RouteToLocation
-	var upPathChgEvt *models.UpPathChgEvent
+	var upPathChgEvt *models.Pcf_SMPolCtrl_UpPathChgEvent
 
 	if srcTcData == nil && tgtTcData == nil {
 		c.Log.Infof("No srcTcData and tgtTcData. Nothing to do")
@@ -546,7 +546,7 @@ func checkUpPathChangeEvt(c *SMContext,
 			return fmt.Errorf("no RouteToLocs in srcTcData")
 		}
 		// TODO: Fix always choosing the first RouteToLocs as source Route
-		srcRoute = *srcTcData.RouteToLocs[0]
+		srcRoute = srcTcData.RouteToLocs[0]
 		// If no target TcData, the default UpPathChgEvent will be the one in source TcData
 		upPathChgEvt = srcTcData.UpPathChgEvent
 	} else {
@@ -561,7 +561,7 @@ func checkUpPathChangeEvt(c *SMContext,
 			return fmt.Errorf("no RouteToLocs in tgtTcData")
 		}
 		// TODO: Fix always choosing the first RouteToLocs as target Route
-		tgtRoute = *tgtTcData.RouteToLocs[0]
+		tgtRoute = tgtTcData.RouteToLocs[0]
 		// If target TcData is available, change UpPathChgEvent to the one in target TcData
 		upPathChgEvt = tgtTcData.UpPathChgEvent
 	} else {

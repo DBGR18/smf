@@ -72,7 +72,7 @@ func newRouter(s *Server) *gin.Engine {
 
 	router.Use(metrics.InboundMetrics())
 	smfCallbackGroup := router.Group(factory.SmfCallbackUriPrefix)
-	smPolicyCallbackAuthCheck := util_oauth.NewRouterAuthorizationCheck(models.ServiceName_NPCF_SMPOLICYCONTROL)
+	smPolicyCallbackAuthCheck := util_oauth.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName_NPCF_SMPOLICYCONTROL)
 	smfCallbackGroup.Use(func(c *gin.Context) {
 		// Apply OAuth check only for SM policy callbacks from PCF.
 		if c.Param("smContextRef") != "" {
@@ -83,14 +83,14 @@ func newRouter(s *Server) *gin.Engine {
 		}
 	})
 	smfCallbackRoutes := s.getCallbackRoutes()
-	smfCallbackAuthCheck := util_oauth.NewRouterAuthorizationCheck(models.ServiceName("nsmf-callback"))
+	smfCallbackAuthCheck := util_oauth.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName("nsmf-callback"))
 	smfCallbackGroup.Use(func(c *gin.Context) {
 		smfCallbackAuthCheck.Check(c, smf_context.GetSelf())
 	})
 	applyRoutes(smfCallbackGroup, smfCallbackRoutes)
 
 	upiGroup := router.Group(factory.UpiUriPrefix)
-	upiAuthCheck := util_oauth.NewRouterAuthorizationCheck(models.ServiceName_NSMF_OAM)
+	upiAuthCheck := util_oauth.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName_NSMF_OAM)
 	upiGroup.Use(func(c *gin.Context) {
 		upiAuthCheck.Check(c, smf_context.GetSelf())
 	})
@@ -98,27 +98,27 @@ func newRouter(s *Server) *gin.Engine {
 	applyRoutes(upiGroup, upiRoutes)
 
 	for _, serviceName := range factory.SmfConfig.Configuration.ServiceNameList {
-		switch models.ServiceName(serviceName) {
-		case models.ServiceName_NSMF_PDUSESSION:
+		switch models.Nrf_NFMgmt_ServiceName(serviceName) {
+		case models.Nrf_NFMgmt_ServiceName_NSMF_PDUSESSION:
 			smfPDUSessionGroup := router.Group(factory.SmfPdusessionResUriPrefix)
 			smfPDUSessionRoutes := s.getPDUSessionRoutes()
-			routerAuthorizationCheck := util_oauth.NewRouterAuthorizationCheck(models.ServiceName_NSMF_PDUSESSION)
+			routerAuthorizationCheck := util_oauth.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName_NSMF_PDUSESSION)
 			smfPDUSessionGroup.Use(func(c *gin.Context) {
 				routerAuthorizationCheck.Check(c, smf_context.GetSelf())
 			})
 			applyRoutes(smfPDUSessionGroup, smfPDUSessionRoutes)
-		case models.ServiceName_NSMF_EVENT_EXPOSURE:
+		case models.Nrf_NFMgmt_ServiceName_NSMF_EVENT_EXPOSURE:
 			smfEventExposureGroup := router.Group(factory.SmfEventExposureResUriPrefix)
 			smfEventExposureRoutes := s.getEventExposureRoutes()
-			routerAuthorizationCheck := util_oauth.NewRouterAuthorizationCheck(models.ServiceName_NSMF_EVENT_EXPOSURE)
+			routerAuthorizationCheck := util_oauth.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName_NSMF_EVENT_EXPOSURE)
 			smfEventExposureGroup.Use(func(c *gin.Context) {
 				routerAuthorizationCheck.Check(c, smf_context.GetSelf())
 			})
 			applyRoutes(smfEventExposureGroup, smfEventExposureRoutes)
-		case models.ServiceName_NSMF_OAM:
+		case models.Nrf_NFMgmt_ServiceName_NSMF_OAM:
 			smfOAMGroup := router.Group(factory.SmfOamUriPrefix)
 			smfOAMRoutes := s.getOAMRoutes()
-			routerAuthorizationCheck := util_oauth.NewRouterAuthorizationCheck(models.ServiceName_NSMF_OAM)
+			routerAuthorizationCheck := util_oauth.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName_NSMF_OAM)
 			smfOAMGroup.Use(func(c *gin.Context) {
 				routerAuthorizationCheck.Check(c, smf_context.GetSelf())
 			})

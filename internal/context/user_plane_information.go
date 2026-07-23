@@ -296,7 +296,7 @@ func (upi *UserPlaneInformation) UpNodesToConfiguration() map[string]*factory.UP
 					endpoints = append(endpoints, eIP.String())
 				}
 				FNxList = append(FNxList, &factory.InterfaceUpfInfoItem{
-					InterfaceType:    models.UpInterfaceType_N3,
+					InterfaceType:    models.Nrf_NFMgmt_UPInterfaceType_N3,
 					Endpoints:        endpoints,
 					NetworkInstances: iface.NetworkInstances,
 				})
@@ -312,7 +312,7 @@ func (upi *UserPlaneInformation) UpNodesToConfiguration() map[string]*factory.UP
 					endpoints = append(endpoints, eIP.String())
 				}
 				FNxList = append(FNxList, &factory.InterfaceUpfInfoItem{
-					InterfaceType:    models.UpInterfaceType_N9,
+					InterfaceType:    models.Nrf_NFMgmt_UPInterfaceType_N9,
 					Endpoints:        endpoints,
 					NetworkInstances: iface.NetworkInstances,
 				})

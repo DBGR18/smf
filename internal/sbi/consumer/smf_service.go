@@ -5,7 +5,7 @@ import (
 
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
-	"github.com/free5gc/openapi/smf/PDUSession"
+	"github.com/free5gc/openapi/smf/PDUSess"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/internal/logger"
 	sbi_metrics "github.com/free5gc/util/metrics/sbi"
@@ -16,10 +16,10 @@ type nsmfService struct {
 
 	PDUSessionMu sync.RWMutex
 
-	PDUSessionClients map[string]*PDUSession.APIClient
+	PDUSessionClients map[string]*PDUSess.APIClient
 }
 
-func (s *nsmfService) getPDUSessionClient(uri string) *PDUSession.APIClient {
+func (s *nsmfService) getPDUSessionClient(uri string) *PDUSess.APIClient {
 	if uri == "" {
 		return nil
 	}
@@ -30,10 +30,10 @@ func (s *nsmfService) getPDUSessionClient(uri string) *PDUSession.APIClient {
 		return client
 	}
 
-	configuration := PDUSession.NewConfiguration()
+	configuration := PDUSess.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	client = PDUSession.NewAPIClient(configuration)
+	client = PDUSess.NewAPIClient(configuration)
 
 	s.PDUSessionMu.RUnlock()
 	s.PDUSessionMu.Lock()
@@ -44,10 +44,10 @@ func (s *nsmfService) getPDUSessionClient(uri string) *PDUSession.APIClient {
 
 func (s *nsmfService) SendSMContextStatusNotification(uri string) (*models.ProblemDetails, error) {
 	if uri != "" {
-		request := &PDUSession.PostSmContextsSmContextStatusNotificationPostRequest{
-			SmfPduSessionSmContextStatusNotification: &models.SmfPduSessionSmContextStatusNotification{
-				StatusInfo: &models.StatusInfo{
-					ResourceStatus: models.ResourceStatus_RELEASED,
+		request := &PDUSess.PostSmContextsSmContextStatusNotificationRequest{
+			RequestBody: &models.Smf_PDUSess_SmContextStatusNotification{
+				StatusInfo: &models.Smf_PDUSess_StatusInfo{
+					ResourceStatus: models.Smf_PDUSess_ResourceStatus_RELEASED,
 				},
 			},
 		}
@@ -55,7 +55,7 @@ func (s *nsmfService) SendSMContextStatusNotification(uri string) (*models.Probl
 		client := s.getPDUSessionClient(uri)
 
 		ctx, pd, err := smf_context.GetSelf().GetTokenCtx(
-			models.ServiceName("namf-callback"), models.NrfNfManagementNfType_AMF)
+			models.Nrf_NFMgmt_ServiceName("namf-callback"), models.Nrf_NFMgmt_NFType_AMF)
 		if err != nil {
 			logger.CtxLog.Warnf("[SMF] Get token for AMF callback failed: %+v", pd)
 			return pd, err
@@ -63,13 +63,13 @@ func (s *nsmfService) SendSMContextStatusNotification(uri string) (*models.Probl
 
 		logger.CtxLog.Infoln("[SMF] Send SMContext Status Notification")
 		_, localErr := client.SMContextsCollectionApi.
-			PostSmContextsSmContextStatusNotificationPost(ctx, uri, request)
+			PostSmContextsSmContextStatusNotification(ctx, uri, request)
 
 		switch err := localErr.(type) {
 		case openapi.GenericOpenAPIError:
 			switch errModel := err.Model().(type) {
-			case PDUSession.PostSmContextsSmContextStatusNotificationPostError:
-				return &errModel.ProblemDetails, nil
+			case PDUSess.PostSmContextsSmContextStatusNotificationError:
+				return errModel.ProblemDetails, nil
 			case error:
 				return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 			default:

@@ -35,18 +35,18 @@ func HandlePDUSessionEstablishmentRequest(
 		switch ipmdr.Uplink {
 		case 0x00:
 			smCtx.MaximumDataRatePerUEForUserPlaneIntegrityProtectionForUpLink = models.
-				MaxIntegrityProtectedDataRate__64_KBPS
+				Smf_PDUSess_MaxIntegrityProtectedDataRate_64_KBPS
 		case 0xff:
 			smCtx.MaximumDataRatePerUEForUserPlaneIntegrityProtectionForUpLink = models.
-				MaxIntegrityProtectedDataRate_MAX_UE_RATE
+				Smf_PDUSess_MaxIntegrityProtectedDataRate_MAX_UE_RATE
 		}
 		switch ipmdr.Downlink {
 		case 0x00:
 			smCtx.MaximumDataRatePerUEForUserPlaneIntegrityProtectionForDownLink = models.
-				MaxIntegrityProtectedDataRate__64_KBPS
+				Smf_PDUSess_MaxIntegrityProtectedDataRate_64_KBPS
 		case 0xff:
 			smCtx.MaximumDataRatePerUEForUserPlaneIntegrityProtectionForDownLink = models.
-				MaxIntegrityProtectedDataRate_MAX_UE_RATE
+				Smf_PDUSess_MaxIntegrityProtectedDataRate_MAX_UE_RATE
 		}
 	}
 	// Handle PDUSessionType
@@ -142,10 +142,10 @@ func (p *Processor) HandlePDUSessionModificationRequest(
 		return nil, fmt.Errorf("sm policy update failed: %w", err_)
 	}
 	if smPolicyDecision == nil {
-		smPolicyDecision = &models.SmPolicyDecision{PccRules: map[string]*models.PccRule{}}
+		smPolicyDecision = &models.Pcf_SMPolCtrl_SmPolicyDecision{PccRules: map[string]*models.Pcf_SMPolCtrl_PccRule{}}
 	}
 	if smPolicyDecision.PccRules == nil {
-		smPolicyDecision.PccRules = map[string]*models.PccRule{}
+		smPolicyDecision.PccRules = map[string]*models.Pcf_SMPolCtrl_PccRule{}
 	}
 
 	// Update SessionRule from decision

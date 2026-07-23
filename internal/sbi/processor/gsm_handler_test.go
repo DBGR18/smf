@@ -32,7 +32,7 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 	testCases := []struct {
 		name         string
 		packetFilter []nasie.PacketFilter
-		flowInfo     models.FlowInformation
+		flowInfo     models.Pcf_SMPolCtrl_FlowInformation
 	}{
 		{
 			name: "MatchAll",
@@ -42,8 +42,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("", "", "", ""),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_BIDIRECTIONAL,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_BIDIRECTIONAL,
 				FlowDescription: "permit out ip from any to assigned",
 			},
 		},
@@ -55,8 +55,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("", "", "192.168.0.0/16", ""),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_UPLINK,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_UPLINK,
 				FlowDescription: "permit out ip from any to 192.168.0.0/16",
 			},
 		},
@@ -68,8 +68,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("10.160.20.0/24", "", "192.168.0.0/16", ""),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_BIDIRECTIONAL,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_BIDIRECTIONAL,
 				FlowDescription: "permit out ip from 10.160.20.0/24 to 192.168.0.0/16",
 			},
 		},
@@ -81,8 +81,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("10.160.20.0/24", "", "192.168.0.0/16", "8000"),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_BIDIRECTIONAL,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_BIDIRECTIONAL,
 				FlowDescription: "permit out ip from 10.160.20.0/24 to 192.168.0.0/16 8000",
 			},
 		},
@@ -94,8 +94,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("10.160.20.0/24", "", "192.168.0.0/16", "3000-8000"),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_DOWNLINK,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_DOWNLINK,
 				FlowDescription: "permit out ip from 10.160.20.0/24 to 192.168.0.0/16 3000-8000",
 			},
 		},
@@ -107,8 +107,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("10.160.20.0/24", "3000-4000", "192.168.0.0/16", "6000-8000"),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_DOWNLINK,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_DOWNLINK,
 				FlowDescription: "permit out ip from 10.160.20.0/24 3000-4000 to 192.168.0.0/16 6000-8000",
 			},
 		},
@@ -124,8 +124,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("10.160.20.0/24", "3000-4000", "192.168.0.0/16", "8000"),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_DOWNLINK,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_DOWNLINK,
 				FlowDescription: "permit out ip from 10.160.20.0/24 3000-4000 to 192.168.0.0/16 6000-7000,8000",
 			},
 		},
@@ -141,8 +141,8 @@ func TestBuildNASPacketFilterFromPacketFilterInfo(t *testing.T) {
 					Contents: contents("10.160.20.0/24", "5000", "192.168.0.0/16", "6000-7000"),
 				},
 			},
-			flowInfo: models.FlowInformation{
-				FlowDirection:   models.FlowDirection_DOWNLINK,
+			flowInfo: models.Pcf_SMPolCtrl_FlowInformation{
+				FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_DOWNLINK,
 				FlowDescription: "permit out ip from 10.160.20.0/24 3000-4000,5000 to 192.168.0.0/16 6000-7000",
 			},
 		},

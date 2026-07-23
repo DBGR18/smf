@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/free5gc/openapi/amf/Communication"
+	"github.com/free5gc/openapi/amf/Comm"
 	"github.com/free5gc/openapi/models"
 	sbi_metrics "github.com/free5gc/util/metrics/sbi"
 )
@@ -15,10 +15,10 @@ type namfService struct {
 
 	CommunicationMu sync.RWMutex
 
-	CommunicationClients map[string]*Communication.APIClient
+	CommunicationClients map[string]*Comm.APIClient
 }
 
-func (s *namfService) getCommunicationClient(uri string) *Communication.APIClient {
+func (s *namfService) getCommunicationClient(uri string) *Comm.APIClient {
 	if uri == "" {
 		return nil
 	}
@@ -29,10 +29,10 @@ func (s *namfService) getCommunicationClient(uri string) *Communication.APIClien
 		return client
 	}
 
-	configuration := Communication.NewConfiguration()
+	configuration := Comm.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	client = Communication.NewAPIClient(configuration)
+	client = Comm.NewAPIClient(configuration)
 
 	s.CommunicationMu.RUnlock()
 	s.CommunicationMu.Lock()
@@ -42,16 +42,16 @@ func (s *namfService) getCommunicationClient(uri string) *Communication.APIClien
 }
 
 func (s *namfService) N1N2MessageTransfer(
-	ctx context.Context, supi string, n1n2Request models.N1N2MessageTransferRequest, apiPrefix string,
-) (*models.N1N2MessageTransferRspData, error) {
+	ctx context.Context, supi string, n1n2Request models.N1N2MessageTransferRequestBody, apiPrefix string,
+) (*models.Amf_Comm_N1N2MessageTransferRspData, error) {
 	client := s.getCommunicationClient(apiPrefix)
 	if client == nil {
 		return nil, fmt.Errorf("N1N2MessageTransfer client is nil: (%v)", apiPrefix)
 	}
 
-	n1n2MessageTransferRequest := &Communication.N1N2MessageTransferRequest{
-		UeContextId:                &supi,
-		N1N2MessageTransferRequest: &n1n2Request,
+	n1n2MessageTransferRequest := &Comm.N1N2MessageTransferRequest{
+		UeContextId: &supi,
+		RequestBody: &n1n2Request,
 	}
 
 	rsp, err := client.N1N2MessageCollectionCollectionApi.N1N2MessageTransfer(ctx, n1n2MessageTransferRequest)
@@ -59,5 +59,5 @@ func (s *namfService) N1N2MessageTransfer(
 		return nil, err
 	}
 
-	return &rsp.N1N2MessageTransferRspData, err
+	return rsp.Amf_Comm_N1N2MessageTransferRspData, err
 }

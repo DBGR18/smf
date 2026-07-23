@@ -24,7 +24,7 @@ func newMockSMFContext() *mockSMFContext {
 	return &mockSMFContext{}
 }
 
-func (m *mockSMFContext) AuthorizationCheck(token string, serviceName models.ServiceName) error {
+func (m *mockSMFContext) AuthorizationCheck(token string, serviceName models.Nrf_NFMgmt_ServiceName) error {
 	if token == Valid {
 		return nil
 	}
@@ -85,7 +85,7 @@ func TestRouterAuthorizationCheck_Check(t *testing.T) {
 			}
 			c.Request.Header.Set("Authorization", tt.args.token)
 
-			rac := util_oauth.NewRouterAuthorizationCheck(models.ServiceName("testService"))
+			rac := util_oauth.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName("testService"))
 			rac.Check(c, newMockSMFContext())
 			if w.Code != tt.want.statusCode {
 				t.Errorf("StatusCode should be %d, but got %d", tt.want.statusCode, w.Code)

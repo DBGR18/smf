@@ -9,8 +9,8 @@ import (
 
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
-	"github.com/free5gc/openapi/udm/SubscriberDataManagement"
-	"github.com/free5gc/openapi/udm/UEContextManagement"
+	"github.com/free5gc/openapi/udm/SDM"
+	"github.com/free5gc/openapi/udm/UECM"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/internal/logger"
 	"github.com/free5gc/smf/internal/util"
@@ -23,11 +23,11 @@ type nudmService struct {
 	SubscriberDataManagementMu sync.RWMutex
 	UEContextManagementMu      sync.RWMutex
 
-	SubscriberDataManagementClients map[string]*SubscriberDataManagement.APIClient
-	UEContextManagementClients      map[string]*UEContextManagement.APIClient
+	SubscriberDataManagementClients map[string]*SDM.APIClient
+	UEContextManagementClients      map[string]*UECM.APIClient
 }
 
-func (s *nudmService) getSubscribeDataManagementClient(uri string) *SubscriberDataManagement.APIClient {
+func (s *nudmService) getSubscribeDataManagementClient(uri string) *SDM.APIClient {
 	if uri == "" {
 		return nil
 	}
@@ -38,10 +38,10 @@ func (s *nudmService) getSubscribeDataManagementClient(uri string) *SubscriberDa
 		return client
 	}
 
-	configuration := SubscriberDataManagement.NewConfiguration()
+	configuration := SDM.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	client = SubscriberDataManagement.NewAPIClient(configuration)
+	client = SDM.NewAPIClient(configuration)
 
 	s.SubscriberDataManagementMu.RUnlock()
 	s.SubscriberDataManagementMu.Lock()
@@ -50,7 +50,7 @@ func (s *nudmService) getSubscribeDataManagementClient(uri string) *SubscriberDa
 	return client
 }
 
-func (s *nudmService) getUEContextManagementClient(uri string) *UEContextManagement.APIClient {
+func (s *nudmService) getUEContextManagementClient(uri string) *UECM.APIClient {
 	if uri == "" {
 		return nil
 	}
@@ -61,10 +61,10 @@ func (s *nudmService) getUEContextManagementClient(uri string) *UEContextManagem
 		return client
 	}
 
-	configuration := UEContextManagement.NewConfiguration()
+	configuration := UECM.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	client = UEContextManagement.NewAPIClient(configuration)
+	client = UECM.NewAPIClient(configuration)
 
 	s.UEContextManagementMu.RUnlock()
 	s.UEContextManagementMu.Lock()
@@ -78,15 +78,15 @@ func (s *nudmService) UeCmRegistration(smCtx *smf_context.SMContext) (
 ) {
 	smfContext := s.consumer.Context()
 
-	uecmUri := util.SearchNFServiceUri(&smfContext.UDMProfile, models.ServiceName_NUDM_UECM,
-		models.NfServiceStatus_REGISTERED)
+	uecmUri := util.SearchNFServiceUri(&smfContext.UDMProfile, models.Nrf_NFMgmt_ServiceName_NUDM_UECM,
+		models.Nrf_NFMgmt_NFServiceStatus_REGISTERED)
 	if uecmUri == "" {
 		return nil, errors.Errorf("SMF can not select an UDM by NRF: SearchNFServiceUri failed")
 	}
 
 	client := s.getUEContextManagementClient(uecmUri)
 
-	registrationData := models.SmfRegistration{
+	registrationData := models.Udm_UECM_SmfRegistration{
 		SmfInstanceId:               smfContext.NfInstanceID,
 		SupportedFeatures:           "",
 		PduSessionId:                smCtx.PduSessionId,
@@ -105,15 +105,16 @@ func (s *nudmService) UeCmRegistration(smCtx *smf_context.SMContext) (
 		" PduSessionId:", registrationData.PduSessionId, " SNssai:", registrationData.SingleNssai,
 		" Dnn:", registrationData.Dnn, " PlmnId:", registrationData.PlmnId)
 
-	ctx, pd, err := smf_context.GetSelf().GetTokenCtx(models.ServiceName_NUDM_UECM, models.NrfNfManagementNfType_UDM)
+	ctx, pd, err := smf_context.GetSelf().GetTokenCtx(
+		models.Nrf_NFMgmt_ServiceName_NUDM_UECM, models.Nrf_NFMgmt_NFType_UDM)
 	if err != nil {
 		return pd, err
 	}
 
-	request := &UEContextManagement.RegistrationRequest{
-		UeId:            &smCtx.Supi,
-		PduSessionId:    &smCtx.PduSessionId,
-		SmfRegistration: &registrationData,
+	request := &UECM.RegistrationRequest{
+		UeId:         &smCtx.Supi,
+		PduSessionId: &smCtx.PduSessionId,
+		RequestBody:  &registrationData,
 	}
 
 	_, localErr := client.SMFSmfRegistrationApi.Registration(ctx, request)
@@ -121,8 +122,8 @@ func (s *nudmService) UeCmRegistration(smCtx *smf_context.SMContext) (
 	switch err := localErr.(type) {
 	case openapi.GenericOpenAPIError:
 		switch errModel := err.Model().(type) {
-		case UEContextManagement.RegistrationError:
-			return &errModel.ProblemDetails, nil
+		case UECM.RegistrationError:
+			return errModel.ProblemDetails, nil
 		case error:
 			return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 		default:
@@ -142,19 +143,20 @@ func (s *nudmService) UeCmRegistration(smCtx *smf_context.SMContext) (
 func (s *nudmService) UeCmDeregistration(smCtx *smf_context.SMContext) (*models.ProblemDetails, error) {
 	smfContext := s.consumer.Context()
 
-	uecmUri := util.SearchNFServiceUri(&smfContext.UDMProfile, models.ServiceName_NUDM_UECM,
-		models.NfServiceStatus_REGISTERED)
+	uecmUri := util.SearchNFServiceUri(&smfContext.UDMProfile, models.Nrf_NFMgmt_ServiceName_NUDM_UECM,
+		models.Nrf_NFMgmt_NFServiceStatus_REGISTERED)
 	if uecmUri == "" {
 		return nil, errors.Errorf("SMF can not select an UDM by NRF: SearchNFServiceUri failed")
 	}
 	client := s.getUEContextManagementClient(uecmUri)
 
-	ctx, pd, err := smf_context.GetSelf().GetTokenCtx(models.ServiceName_NUDM_UECM, models.NrfNfManagementNfType_UDM)
+	ctx, pd, err := smf_context.GetSelf().GetTokenCtx(
+		models.Nrf_NFMgmt_ServiceName_NUDM_UECM, models.Nrf_NFMgmt_NFType_UDM)
 	if err != nil {
 		return pd, err
 	}
 
-	request := &UEContextManagement.SmfDeregistrationRequest{
+	request := &UECM.SmfDeregistrationRequest{
 		UeId:         &smCtx.Supi,
 		PduSessionId: &smCtx.PduSessionId,
 	}
@@ -164,8 +166,8 @@ func (s *nudmService) UeCmDeregistration(smCtx *smf_context.SMContext) (*models.
 	switch err := localErr.(type) {
 	case openapi.GenericOpenAPIError:
 		switch errModel := err.Model().(type) {
-		case UEContextManagement.SmfDeregistrationError:
-			return &errModel.ProblemDetails, nil
+		case UECM.SmfDeregistrationError:
+			return errModel.ProblemDetails, nil
 		case error:
 			return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 		default:
@@ -183,12 +185,12 @@ func (s *nudmService) UeCmDeregistration(smCtx *smf_context.SMContext) (*models.
 }
 
 func (s *nudmService) GetSmData(ctx context.Context, supi string,
-	request *SubscriberDataManagement.GetSmDataRequest) (
-	[]models.SessionManagementSubscriptionData, error,
+	request *SDM.GetSmDataRequest) (
+	[]models.Udm_SDM_SessionManagementSubscriptionData, error,
 ) {
-	var client *SubscriberDataManagement.APIClient
+	var client *SDM.APIClient
 	for _, service := range s.consumer.Context().UDMProfile.NfServices {
-		if service.ServiceName == models.ServiceName_NUDM_SDM {
+		if service.ServiceName == models.Nrf_NFMgmt_ServiceName_NUDM_SDM {
 			client = s.getSubscribeDataManagementClient(service.ApiPrefix)
 			if client != nil {
 				break
@@ -206,7 +208,10 @@ func (s *nudmService) GetSmData(ctx context.Context, supi string,
 	if err != nil {
 		return nil, err
 	}
-	sessSubData := rsp.SmSubsData
+	var sessSubData []models.Udm_SDM_SessionManagementSubscriptionData
+	if rsp.Udm_SDM_SmSubsData != nil {
+		sessSubData = rsp.Udm_SDM_SmSubsData.IndividualSmSubsData
+	}
 
 	return sessSubData, err
 }
@@ -214,9 +219,9 @@ func (s *nudmService) GetSmData(ctx context.Context, supi string,
 func (s *nudmService) Subscribe(ctx context.Context, smCtx *smf_context.SMContext, smPlmnID *models.PlmnIdNid) (
 	*models.ProblemDetails, error,
 ) {
-	var client *SubscriberDataManagement.APIClient
+	var client *SDM.APIClient
 	for _, service := range s.consumer.Context().UDMProfile.NfServices {
-		if service.ServiceName == models.ServiceName_NUDM_SDM {
+		if service.ServiceName == models.Nrf_NFMgmt_ServiceName_NUDM_SDM {
 			client = s.getSubscribeDataManagementClient(service.ApiPrefix)
 			if client != nil {
 				break
@@ -228,9 +233,9 @@ func (s *nudmService) Subscribe(ctx context.Context, smCtx *smf_context.SMContex
 		return nil, fmt.Errorf("sdm client failed")
 	}
 
-	request := &SubscriberDataManagement.SubscribeRequest{
+	request := &SDM.SubscribeRequest{
 		UeId: &smCtx.Supi,
-		SdmSubscription: &models.SdmSubscription{
+		RequestBody: &models.Udm_SDM_SdmSubscription{
 			NfInstanceId: s.consumer.Context().NfInstanceID,
 			PlmnId: &models.PlmnId{
 				Mcc: smPlmnID.Mcc,
@@ -244,8 +249,8 @@ func (s *nudmService) Subscribe(ctx context.Context, smCtx *smf_context.SMContex
 	switch err := localErr.(type) {
 	case openapi.GenericOpenAPIError:
 		switch errModel := err.Model().(type) {
-		case SubscriberDataManagement.SubscribeError:
-			return &errModel.ProblemDetails, nil
+		case SDM.SubscribeError:
+			return errModel.ProblemDetails, nil
 		case error:
 			return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 		default:
@@ -254,9 +259,9 @@ func (s *nudmService) Subscribe(ctx context.Context, smCtx *smf_context.SMContex
 	case error:
 		return openapi.ProblemDetailsSystemFailure(err.Error()), nil
 	case nil:
-		s.consumer.Context().Ues.SetSubscriptionId(smCtx.Supi, res.SdmSubscription.SubscriptionId)
+		s.consumer.Context().Ues.SetSubscriptionId(smCtx.Supi, res.Udm_SDM_SdmSubscription.SubscriptionId)
 		logger.PduSessLog.Infoln("SDM Subscription Successful UE:", smCtx.Supi, "SubscriptionId:",
-			res.SdmSubscription.SubscriptionId)
+			res.Udm_SDM_SdmSubscription.SubscriptionId)
 		s.consumer.Context().Ues.IncrementPduSessionCount(smCtx.Supi)
 		return nil, nil
 	default:
@@ -267,15 +272,15 @@ func (s *nudmService) Subscribe(ctx context.Context, smCtx *smf_context.SMContex
 func (s *nudmService) UnSubscribe(smCtx *smf_context.SMContext) (
 	*models.ProblemDetails, error,
 ) {
-	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDM_SDM, models.NrfNfManagementNfType_UDM)
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NUDM_SDM, models.Nrf_NFMgmt_NFType_UDM)
 	if err != nil {
 		return nil, err
 	}
 
 	if s.consumer.Context().Ues.IsLastPduSession(smCtx.Supi) {
-		var client *SubscriberDataManagement.APIClient
+		var client *SDM.APIClient
 		for _, service := range s.consumer.Context().UDMProfile.NfServices {
-			if service.ServiceName == models.ServiceName_NUDM_SDM {
+			if service.ServiceName == models.Nrf_NFMgmt_ServiceName_NUDM_SDM {
 				client = s.getSubscribeDataManagementClient(service.ApiPrefix)
 				if client != nil {
 					break
@@ -289,7 +294,7 @@ func (s *nudmService) UnSubscribe(smCtx *smf_context.SMContext) (
 
 		subscriptionId := s.consumer.Context().Ues.GetSubscriptionId(smCtx.Supi)
 
-		request := &SubscriberDataManagement.UnsubscribeRequest{
+		request := &SDM.UnsubscribeRequest{
 			UeId:           &smCtx.Supi,
 			SubscriptionId: &subscriptionId,
 		}
@@ -299,8 +304,8 @@ func (s *nudmService) UnSubscribe(smCtx *smf_context.SMContext) (
 		switch err := localErr.(type) {
 		case openapi.GenericOpenAPIError:
 			switch errModel := err.Model().(type) {
-			case SubscriberDataManagement.UnsubscribeError:
-				return &errModel.ProblemDetails, nil
+			case SDM.UnsubscribeError:
+				return errModel.ProblemDetails, nil
 			case error:
 				return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 			default:

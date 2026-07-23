@@ -18,16 +18,16 @@ const testSessRuleID = "SessRuleId-1"
 // It intentionally does NOT use NewSMContext: that would touch the global
 // TeidGenerator (nil in unit tests) and the smContextPool.
 func newGSMTestContext() *SMContext {
-	sessRule := NewSessionRule(&models.SessionRule{
+	sessRule := NewSessionRule(&models.Pcf_SMPolCtrl_SessionRule{
 		AuthSessAmbr: &models.Ambr{Uplink: "200 Kbps", Downlink: "100 Kbps"},
-		AuthDefQos:   &models.AuthorizedDefaultQos{Var5qi: 9, Arp: &models.Arp{PriorityLevel: 8}},
+		AuthDefQos:   &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{Var5qi: 9, Arp: &models.Arp{PriorityLevel: 8}},
 		SessRuleId:   testSessRuleID,
 	})
 	return &SMContext{
-		SmfPduSessionSmContextCreateData: &models.SmfPduSessionSmContextCreateData{
+		Smf_PDUSess_SmContextCreateData: &models.Smf_PDUSess_SmContextCreateData{
 			Dnn:    "internet",
 			SNssai: &models.Snssai{Sst: 1, Sd: "112232"},
-			AnType: models.AccessType__3_GPP_ACCESS,
+			AnType: models.AccessType_3_GPP_ACCESS,
 		},
 		PDUSessionID:                 10,
 		Pti:                          1,
@@ -75,20 +75,20 @@ func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
 				// makes the golden unstable (map iteration + rule ID allocation)
 				smContext.PCCRules = map[string]*PCCRule{
 					"PccRuleId-1": {
-						PccRule: &models.PccRule{
+						Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
 							PccRuleId:  "PccRuleId-1",
 							Precedence: 200,
-							FlowInfos: []models.FlowInformation{{
+							FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{{
 								FlowDescription: "permit out ip from any to assigned",
 								PackFiltId:      "PackFiltId-1",
-								FlowDirection:   models.FlowDirection_BIDIRECTIONAL,
+								FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_BIDIRECTIONAL,
 							}},
 						},
 						QFI: 2,
 					},
 				}
 				smContext.AdditionalQosFlows = map[uint8]*QoSFlow{
-					2: NewQoSFlow(2, &models.QosData{
+					2: NewQoSFlow(2, &models.Pcf_SMPolCtrl_QosData{
 						Var5qi: 9,
 						Arp: &models.Arp{
 							PriorityLevel: 8,
@@ -132,36 +132,36 @@ func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
 				// multiple packet filters stay deterministic
 				smContext.PCCRules = map[string]*PCCRule{
 					"PccRuleId-2": {
-						PccRule: &models.PccRule{
+						Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
 							PccRuleId:  "PccRuleId-2",
 							Precedence: 100,
-							FlowInfos: []models.FlowInformation{
+							FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 								{
 									// remote addr + single remote port, local addr +
 									// local port range, protocol TCP(6)
 									FlowDescription: "permit out 6 from 10.10.0.0/16 1000 to 10.60.0.1/32 2000-3000",
 									PackFiltId:      "PackFiltId-2",
-									FlowDirection:   models.FlowDirection_BIDIRECTIONAL,
+									FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_BIDIRECTIONAL,
 								},
 								{
 									// remote port range + single local port + ToS, UDP(17)
 									FlowDescription: "permit out 17 from 10.20.0.0/16 5000-6000 to 10.60.0.1/32 443",
 									TosTrafficClass: "28ff",
 									PackFiltId:      "PackFiltId-3",
-									FlowDirection:   models.FlowDirection_DOWNLINK,
+									FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_DOWNLINK,
 								},
 								{
 									// local-port-only case (srcPLen==0 && dstPLen>0)
 									FlowDescription: "permit out ip from any to 10.60.0.1/32 8080",
 									PackFiltId:      "PackFiltId-4",
-									FlowDirection:   models.FlowDirection_UPLINK,
+									FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_UPLINK,
 								},
 								{
 									// remote-port-only case (srcPLen>0 && dstPLen==0) + SPI
 									FlowDescription: "permit out ip from 10.30.0.0/16 9000 to assigned",
 									Spi:             "1a2b3c",
 									PackFiltId:      "PackFiltId-5",
-									FlowDirection:   models.FlowDirection_BIDIRECTIONAL,
+									FlowDirection:   models.Pcf_SMPolCtrl_FlowDirectionRm_BIDIRECTIONAL,
 								},
 							},
 						},
@@ -169,7 +169,7 @@ func TestGoldenBuildGSMPDUSessionEstablishmentAccept(t *testing.T) {
 					},
 				}
 				smContext.AdditionalQosFlows = map[uint8]*QoSFlow{
-					2: NewQoSFlow(2, &models.QosData{
+					2: NewQoSFlow(2, &models.Pcf_SMPolCtrl_QosData{
 						Var5qi:  1, // standard GBR 5QI -> IsGBRFlow() is true
 						GbrDl:   "100 Mbps",
 						GbrUl:   "50 Mbps",

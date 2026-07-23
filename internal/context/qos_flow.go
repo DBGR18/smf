@@ -20,11 +20,11 @@ const (
 
 type QoSFlow struct {
 	QFI        uint8
-	QoSProfile *models.QosData
+	QoSProfile *models.Pcf_SMPolCtrl_QosData
 	State      QoSFlowState
 }
 
-func NewQoSFlow(qfi uint8, qosModel *models.QosData) *QoSFlow {
+func NewQoSFlow(qfi uint8, qosModel *models.Pcf_SMPolCtrl_QosData) *QoSFlow {
 	if qosModel == nil {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (q *QoSFlow) Get5QI() uint8 {
 	return uint8(q.QoSProfile.Var5qi)
 }
 
-func (q *QoSFlow) GetQoSProfile() *models.QosData {
+func (q *QoSFlow) GetQoSProfile() *models.Pcf_SMPolCtrl_QosData {
 	return q.QoSProfile
 }
 
@@ -98,7 +98,7 @@ func buildArpFromModels(arp *models.Arp) (int64, aper.Enumerated, aper.Enumerate
 	return arpPriorityLevel, arpPreEmptionCapability, arpPreEmptionVulnerability
 }
 
-func buildGBRQosInformationFromModel(qos *models.QosData) *ngapie.GBRQosInformation {
+func buildGBRQosInformationFromModel(qos *models.Pcf_SMPolCtrl_QosData) *ngapie.GBRQosInformation {
 	if qos == nil {
 		return nil
 	}

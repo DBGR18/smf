@@ -85,7 +85,7 @@ func HandlePDUSessionResourceSetupResponseTransfer(b []byte, ctx *SMContext) err
 			binary.BigEndian.Uint32(DCGTPTunnel.GTPTEID.Value))
 	}
 
-	ctx.UpCnxState = models.UpCnxState_ACTIVATED
+	ctx.UpCnxState = models.Smf_PDUSess_UpCnxState_ACTIVATED
 	for _, qos := range ctx.AdditionalQosFlows {
 		qos.State = QoSFlowSet
 	}
@@ -177,7 +177,7 @@ func HandlePDUSessionResourceSetupUnsuccessfulTransfer(b []byte, ctx *SMContext)
 	logger.PduSessLog.Warnf("PDU Session Resource Setup Unsuccessful: %s",
 		strNgapCause(resourceSetupUnsuccessfulTransfer.Cause))
 
-	ctx.UpCnxState = models.UpCnxState_ACTIVATING
+	ctx.UpCnxState = models.Smf_PDUSess_UpCnxState_ACTIVATING
 
 	return nil
 }

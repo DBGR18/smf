@@ -6,6 +6,7 @@ import (
 	"time"
 
 	nasie "github.com/free5gc/nas/ie"
+	"github.com/free5gc/openapi/mediatype/multipart"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp"
 	"github.com/free5gc/pfcp/pfcpType"
@@ -183,9 +184,9 @@ func (p *Processor) releaseAllResourcesOfUPF(upf *smf_context.UPF, upfStr string
 func (p *Processor) requestAMFToReleasePDUResources(
 	smContext *smf_context.SMContext,
 ) (sendNotify bool, releaseContext bool) {
-	n1n2Request := models.N1N2MessageTransferRequest{}
+	n1n2Request := models.N1N2MessageTransferRequestBody{}
 	// TS 23.502 4.3.4.2 3b. Send Namf_Communication_N1N2MessageTransfer Request, SMF->AMF
-	n1n2Request.JsonData = &models.N1N2MessageTransferReqData{
+	n1n2Request.JsonData = &models.Amf_Comm_N1N2MessageTransferReqData{
 		PduSessionId: smContext.PDUSessionID,
 		SkipInd:      true,
 	}
@@ -193,23 +194,23 @@ func (p *Processor) requestAMFToReleasePDUResources(
 	if buf, err := smf_context.BuildGSMPDUSessionReleaseCommand(smContext, cause, false); err != nil {
 		logger.MainLog.Errorf("Build GSM PDUSessionReleaseCommand failed: %+v", err)
 	} else {
-		n1n2Request.BinaryDataN1Message = buf
-		n1n2Request.JsonData.N1MessageContainer = &models.N1MessageContainer{
+		n1n2Request.BinaryDataN1Message = &multipart.RelatedContent{ContentID: "GSM_NAS", Content: buf}
+		n1n2Request.JsonData.N1MessageContainer = &models.Amf_Comm_N1MessageContainer{
 			N1MessageClass:   "SM",
 			N1MessageContent: &models.RefToBinaryData{ContentId: "GSM_NAS"},
 		}
 	}
-	if smContext.UpCnxState != models.UpCnxState_DEACTIVATED {
+	if smContext.UpCnxState != models.Smf_PDUSess_UpCnxState_DEACTIVATED {
 		if buf, err := smf_context.BuildPDUSessionResourceReleaseCommandTransfer(smContext); err != nil {
 			logger.MainLog.Errorf("Build PDUSessionResourceReleaseCommandTransfer failed: %+v", err)
 		} else {
-			n1n2Request.BinaryDataN2Information = buf
-			n1n2Request.JsonData.N2InfoContainer = &models.N2InfoContainer{
-				N2InformationClass: models.N2InformationClass_SM,
-				SmInfo: &models.N2SmInformation{
+			n1n2Request.BinaryDataN2Information = &multipart.RelatedContent{ContentID: "N2SmInformation", Content: buf}
+			n1n2Request.JsonData.N2InfoContainer = &models.Amf_Comm_N2InfoContainer{
+				N2InformationClass: models.Amf_Comm_N2InformationClass_SM,
+				SmInfo: &models.Amf_Comm_N2SmInformation{
 					PduSessionId: smContext.PDUSessionID,
-					N2InfoContent: &models.N2InfoContent{
-						NgapIeType: models.AmfCommunicationNgapIeType_PDU_RES_REL_CMD,
+					N2InfoContent: &models.Amf_Comm_N2InfoContent{
+						NgapIeType: models.Amf_Comm_NgapIeType_PDU_RES_REL_CMD,
 						NgapData: &models.RefToBinaryData{
 							ContentId: "N2SmInformation",
 						},
@@ -220,7 +221,8 @@ func (p *Processor) requestAMFToReleasePDUResources(
 		}
 	}
 
-	ctx, _, errToken := smf_context.GetSelf().GetTokenCtx(models.ServiceName_NAMF_COMM, models.NrfNfManagementNfType_AMF)
+	ctx, _, errToken := smf_context.GetSelf().GetTokenCtx(
+		models.Nrf_NFMgmt_ServiceName_NAMF_COMM, models.Nrf_NFMgmt_NFType_AMF)
 	if errToken != nil {
 		return false, false
 	}
@@ -234,14 +236,14 @@ func (p *Processor) requestAMFToReleasePDUResources(
 		smContext.SetState(smf_context.InActive)
 	} else {
 		switch rspData.Cause {
-		case models.N1N2MessageTransferCause_N1_MSG_NOT_TRANSFERRED:
+		case models.Amf_Comm_N1N2MessageTransferCause_N1_MSG_NOT_TRANSFERRED:
 			// the PDU Session Release Command was not transferred to the UE since it is in CM-IDLE state.
 			//   ref. step3b of "4.3.4.2 UE or network requested PDU Session Release for Non-Roaming and
 			//        Roaming with Local Breakout" in TS23.502
 			// it is needed to remove both AMF's and SMF's SM Contexts immediately
 			smContext.SetState(smf_context.InActive)
 			return true, true
-		case models.N1N2MessageTransferCause_N1_N2_TRANSFER_INITIATED:
+		case models.Amf_Comm_N1N2MessageTransferCause_N1_N2_TRANSFER_INITIATED:
 			// wait for N2 PDU Session Release Response
 			smContext.SetState(smf_context.InActivePending)
 		default:

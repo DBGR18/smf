@@ -606,9 +606,9 @@ func (u *UPNode) validate() (bool, error) {
 }
 
 type InterfaceUpfInfoItem struct {
-	InterfaceType    models.UpInterfaceType `json:"interfaceType" yaml:"interfaceType" valid:"required"`
-	Endpoints        []string               `json:"endpoints" yaml:"endpoints" valid:"required"`
-	NetworkInstances []string               `json:"networkInstances" yaml:"networkInstances" valid:"required"`
+	InterfaceType    models.Nrf_NFMgmt_UPInterfaceType `json:"interfaceType" yaml:"interfaceType" valid:"required"`
+	Endpoints        []string                          `json:"endpoints" yaml:"endpoints" valid:"required"`
+	NetworkInstances []string                          `json:"networkInstances" yaml:"networkInstances" valid:"required"`
 }
 
 func (i *InterfaceUpfInfoItem) validate() (bool, error) {

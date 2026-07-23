@@ -22,7 +22,7 @@ func Init(config *factory.Config) {
 }
 
 type NFContext interface {
-	AuthorizationCheck(token string, serviceName models.ServiceName) error
+	AuthorizationCheck(token string, serviceName models.Nrf_NFMgmt_ServiceName) error
 }
 
 var _ NFContext = &SMFContext{}
@@ -43,7 +43,7 @@ type SMFContext struct {
 	ExternalAddr string
 	ListenAddr   string
 
-	UDMProfile models.NrfNfDiscoveryNfProfile
+	UDMProfile models.Nrf_NFDisc_NFProfile
 	NfProfile  NFProfile
 
 	Key    string
@@ -307,17 +307,17 @@ func GetUEDefaultPathPool(groupName string) *UEDefaultPaths {
 	return smfContext.UEDefaultPathPool[groupName]
 }
 
-func (c *SMFContext) GetTokenCtx(serviceName models.ServiceName, targetNF models.NrfNfManagementNfType) (
+func (c *SMFContext) GetTokenCtx(serviceName models.Nrf_NFMgmt_ServiceName, targetNF models.Nrf_NFMgmt_NFType) (
 	context.Context, *models.ProblemDetails, error,
 ) {
 	if !c.OAuth2Required {
 		return context.TODO(), nil, nil
 	}
-	return oauth.GetTokenCtx(models.NrfNfManagementNfType_SMF, targetNF,
+	return oauth.GetTokenCtx(models.Nrf_NFMgmt_NFType_SMF, targetNF,
 		c.NfInstanceID, c.NrfUri, string(serviceName))
 }
 
-func (c *SMFContext) AuthorizationCheck(token string, serviceName models.ServiceName) error {
+func (c *SMFContext) AuthorizationCheck(token string, serviceName models.Nrf_NFMgmt_ServiceName) error {
 	if !c.OAuth2Required {
 		return nil
 	}

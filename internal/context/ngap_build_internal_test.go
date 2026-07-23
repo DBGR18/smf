@@ -19,7 +19,7 @@ func newTestUPTunnel() *UPTunnel {
 	upf := NewUPF(
 		&pfcpType.NodeID{NodeIdType: pfcpType.NodeIdTypeIpv4Address, IP: net.ParseIP("192.168.179.1").To4()},
 		[]*factory.InterfaceUpfInfoItem{{
-			InterfaceType:    models.UpInterfaceType_N3,
+			InterfaceType:    models.Nrf_NFMgmt_UPInterfaceType_N3,
 			Endpoints:        []string{"127.0.0.8"},
 			NetworkInstances: []string{"internet"},
 		}})
@@ -85,7 +85,7 @@ func TestGoldenBuildPDUSessionResourceModifyRequestTransfer(t *testing.T) {
 		// exactly ONE flow: QosFlowAddOrModifyRequestList has aper tag sizeLB:1,
 		// and two or more map entries would make the encoding order unstable
 		smContext.AdditionalQosFlows = map[uint8]*QoSFlow{
-			2: NewQoSFlow(2, &models.QosData{
+			2: NewQoSFlow(2, &models.Pcf_SMPolCtrl_QosData{
 				Var5qi: 9,
 				Arp: &models.Arp{
 					PriorityLevel: 8,
@@ -165,7 +165,7 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 					UpIntegr: models.UpIntegrity_REQUIRED,
 					UpConfid: models.UpConfidentiality_REQUIRED,
 				}
-				maxUERate := models.MaxIntegrityProtectedDataRate_MAX_UE_RATE
+				maxUERate := models.Smf_PDUSess_MaxIntegrityProtectedDataRate_MAX_UE_RATE
 				smContext.MaximumDataRatePerUEForUserPlaneIntegrityProtectionForUpLink = maxUERate
 			}
 			return smContext
@@ -178,7 +178,7 @@ func TestGoldenBuildPDUSessionResourceSetupRequestTransfer(t *testing.T) {
 		// GBR 5QI: exercises BuildNgapQosFlowSetupRequestItem and the
 		// GBRQosInformation branch (bitrate-string conversion included)
 		smContext.AdditionalQosFlows = map[uint8]*QoSFlow{
-			2: NewQoSFlow(2, &models.QosData{
+			2: NewQoSFlow(2, &models.Pcf_SMPolCtrl_QosData{
 				Var5qi:  1,
 				GbrDl:   "100 Mbps",
 				GbrUl:   "50 Mbps",
@@ -331,7 +331,7 @@ func TestGoldenBuildPathSwitchRequestAcknowledgeTransfer(t *testing.T) {
 					UpIntegr: models.UpIntegrity_REQUIRED,
 					UpConfid: models.UpConfidentiality_REQUIRED,
 				}
-				maxUERate := models.MaxIntegrityProtectedDataRate_MAX_UE_RATE
+				maxUERate := models.Smf_PDUSess_MaxIntegrityProtectedDataRate_MAX_UE_RATE
 				smContext.MaximumDataRatePerUEForUserPlaneIntegrityProtectionForUpLink = maxUERate
 			}
 			return smContext

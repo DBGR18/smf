@@ -39,7 +39,7 @@ func TestSendSMPolicyAssociationUpdateByUERequestModification(t *testing.T) {
 		qosRules     nasie.QosRules
 		qosFlowDescs nasie.QosFlowDescs
 
-		smPolicyDecision *models.SmPolicyDecision
+		smPolicyDecision *models.Pcf_SMPolCtrl_SmPolicyDecision
 		responseErr      error
 	}{
 		{

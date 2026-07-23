@@ -23,9 +23,9 @@ func (p *Processor) CreateChargingSession(smContext *smf_context.SMContext) {
 }
 
 func (p *Processor) UpdateChargingSession(
-	smContext *smf_context.SMContext, urrList []*smf_context.URR, trigger models.ChfConvergedChargingTrigger,
+	smContext *smf_context.SMContext, urrList []*smf_context.URR, trigger models.Chf_ConvCharging_Trigger,
 ) {
-	var multipleUnitUsage []models.ChfConvergedChargingMultipleUnitUsage
+	var multipleUnitUsage []models.Chf_ConvCharging_MultipleUnitUsage
 
 	for _, urr := range urrList {
 		if chgInfo := smContext.ChargingInfo[urr.URRID]; chgInfo != nil {
@@ -34,16 +34,16 @@ func (p *Processor) UpdateChargingSession(
 				urr.URRID, rg, chgInfo.ChargingMethod)
 			triggerTime := time.Now()
 
-			uu := models.ChfConvergedChargingUsedUnitContainer{
+			uu := models.Chf_ConvCharging_UsedUnitContainer{
 				QuotaManagementIndicator: chgInfo.ChargingMethod,
-				Triggers:                 []models.ChfConvergedChargingTrigger{trigger},
+				Triggers:                 []models.Chf_ConvCharging_Trigger{trigger},
 				TriggerTimestamp:         &triggerTime,
 			}
 
-			muu := models.ChfConvergedChargingMultipleUnitUsage{
+			muu := models.Chf_ConvCharging_MultipleUnitUsage{
 				RatingGroup:       rg,
 				UPFID:             chgInfo.UpfId,
-				UsedUnitContainer: []models.ChfConvergedChargingUsedUnitContainer{uu},
+				UsedUnitContainer: []models.Chf_ConvCharging_UsedUnitContainer{uu},
 			}
 
 			multipleUnitUsage = append(multipleUnitUsage, muu)
@@ -156,17 +156,17 @@ func (p *Processor) ReportUsageAndUpdateQuota(smContext *smf_context.SMContext) 
 
 func buildMultiUnitUsageFromUsageReport(
 	smContext *smf_context.SMContext,
-) []models.ChfConvergedChargingMultipleUnitUsage {
+) []models.Chf_ConvCharging_MultipleUnitUsage {
 	logger.ChargingLog.Infof("build MultiUnitUsageFromUsageReport")
 
-	var ratingGroupUnitUsagesMap map[int32]models.ChfConvergedChargingMultipleUnitUsage
-	var multipleUnitUsage []models.ChfConvergedChargingMultipleUnitUsage
+	var ratingGroupUnitUsagesMap map[int32]models.Chf_ConvCharging_MultipleUnitUsage
+	var multipleUnitUsage []models.Chf_ConvCharging_MultipleUnitUsage
 
-	ratingGroupUnitUsagesMap = make(map[int32]models.ChfConvergedChargingMultipleUnitUsage)
+	ratingGroupUnitUsagesMap = make(map[int32]models.Chf_ConvCharging_MultipleUnitUsage)
 	for _, ur := range smContext.UrrReports {
 		logger.ChargingLog.Debugf("Processing Usage Report: URR ID=%d, ReportType=%s", ur.UrrId, ur.ReportTpye)
 		if ur.ReportTpye != "" {
-			var triggers []models.ChfConvergedChargingTrigger
+			var triggers []models.Chf_ConvCharging_Trigger
 
 			chgInfo := smContext.ChargingInfo[ur.UrrId]
 			if chgInfo == nil {
@@ -204,18 +204,18 @@ func buildMultiUnitUsageFromUsageReport(
 			}
 
 			if chgInfo.ChargingLevel == smf_context.FlowCharging &&
-				ur.ReportTpye == models.ChfConvergedChargingTriggerType_VOLUME_LIMIT {
-				triggers = []models.ChfConvergedChargingTrigger{
+				ur.ReportTpye == models.Chf_ConvCharging_TriggerType_VOLUME_LIMIT {
+				triggers = []models.Chf_ConvCharging_Trigger{
 					{
 						TriggerType:     ur.ReportTpye,
-						TriggerCategory: models.TriggerCategory_DEFERRED_REPORT,
+						TriggerCategory: models.Chf_ConvCharging_TriggerCategory_DEFERRED_REPORT,
 					},
 				}
 			} else {
-				triggers = []models.ChfConvergedChargingTrigger{
+				triggers = []models.Chf_ConvCharging_Trigger{
 					{
 						TriggerType:     ur.ReportTpye,
-						TriggerCategory: models.TriggerCategory_IMMEDIATE_REPORT,
+						TriggerCategory: models.Chf_ConvCharging_TriggerCategory_IMMEDIATE_REPORT,
 					},
 				}
 			}
@@ -226,7 +226,7 @@ func buildMultiUnitUsageFromUsageReport(
 				ur.UrrId, rg, ur.UpfId, chgInfo.UpfId, chgInfo.ChargingMethod)
 			triggerTime := time.Now()
 
-			uu := models.ChfConvergedChargingUsedUnitContainer{
+			uu := models.Chf_ConvCharging_UsedUnitContainer{
 				QuotaManagementIndicator: chgInfo.ChargingMethod,
 				Triggers:                 triggers,
 				TriggerTimestamp:         &triggerTime,
@@ -235,22 +235,22 @@ func buildMultiUnitUsageFromUsageReport(
 				TotalVolume:              int32(ur.TotalVolume),
 			}
 			if unitUsage, ok := ratingGroupUnitUsagesMap[rg]; !ok {
-				requestUnit := &models.RequestedUnit{}
+				requestUnit := &models.Chf_ConvCharging_RequestedUnit{}
 
 				// Only online charging should request unit
 				// offline charging is only for recording usage
-				if chgInfo.ChargingMethod == models.QuotaManagementIndicator_ONLINE_CHARGING {
-					requestUnit = &models.RequestedUnit{
+				if chgInfo.ChargingMethod == models.Chf_ConvCharging_QuotaManagementIndicator_ONLINE_CHARGING {
+					requestUnit = &models.Chf_ConvCharging_RequestedUnit{
 						TotalVolume:    smContext.RequestedUnit,
 						DownlinkVolume: smContext.RequestedUnit,
 						UplinkVolume:   smContext.RequestedUnit,
 					}
 				}
 
-				ratingGroupUnitUsagesMap[rg] = models.ChfConvergedChargingMultipleUnitUsage{
+				ratingGroupUnitUsagesMap[rg] = models.Chf_ConvCharging_MultipleUnitUsage{
 					RatingGroup:       rg,
 					UPFID:             ur.UpfId,
-					UsedUnitContainer: []models.ChfConvergedChargingUsedUnitContainer{uu},
+					UsedUnitContainer: []models.Chf_ConvCharging_UsedUnitContainer{uu},
 					RequestedUnit:     requestUnit,
 				}
 			} else {
@@ -296,7 +296,7 @@ func getUrrsByRg(smContext *smf_context.SMContext, upfId string, rg int32) []*sm
 
 // Update the urr by the charging information renewed by chf
 func (p *Processor) updateGrantedQuota(
-	smContext *smf_context.SMContext, multipleUnitInformation []models.MultipleUnitInformation,
+	smContext *smf_context.SMContext, multipleUnitInformation []models.Chf_ConvCharging_MultipleUnitInformation,
 ) {
 	logger.ChargingLog.Debugf("updateGrantedQuota: Received %d MultipleUnitInformation from CHF",
 		len(multipleUnitInformation))
@@ -321,7 +321,7 @@ func (p *Processor) updateGrantedQuota(
 
 			for _, t := range ui.Triggers {
 				switch t.TriggerType {
-				case models.ChfConvergedChargingTriggerType_VOLUME_LIMIT:
+				case models.Chf_ConvCharging_TriggerType_VOLUME_LIMIT:
 					// According to 32.255, the for the trigger "Expirt of datavolume limit" have two reporting level
 					// In the Pdu sesion level, the report should be "Immediate report",
 					// that is this report should send to CHF immediately
@@ -334,7 +334,7 @@ func (p *Processor) updateGrantedQuota(
 					// will be included in the report, and the report type will be determined by the SMF
 					switch chgInfo.ChargingLevel {
 					case smf_context.PduSessionCharging:
-						if t.TriggerCategory == models.TriggerCategory_IMMEDIATE_REPORT {
+						if t.TriggerCategory == models.Chf_ConvCharging_TriggerCategory_IMMEDIATE_REPORT {
 							smContext.Log.Infof("Add Volume Limit Expiry Timer for Pdu session, it's rating group is [%d]", rg)
 
 							if chgInfo.VolumeLimitExpiryTimer != nil {
@@ -349,7 +349,7 @@ func (p *Processor) updateGrantedQuota(
 									urrList := []*smf_context.URR{urr}
 									upf := smf_context.GetUpfById(ui.UPFID)
 									if upf != nil {
-										QueryReport(smContext, upf, urrList, models.ChfConvergedChargingTriggerType_VOLUME_LIMIT)
+										QueryReport(smContext, upf, urrList, models.Chf_ConvCharging_TriggerType_VOLUME_LIMIT)
 										p.ReportUsageAndUpdateQuota(smContext)
 									}
 								},
@@ -360,7 +360,7 @@ func (p *Processor) updateGrantedQuota(
 								})
 						}
 					case smf_context.FlowCharging:
-						if t.TriggerCategory == models.TriggerCategory_DEFERRED_REPORT {
+						if t.TriggerCategory == models.Chf_ConvCharging_TriggerCategory_DEFERRED_REPORT {
 							smContext.Log.Infof("Add Volume Limit Expiry Timer for rating group [%d] ", rg)
 
 							if chgInfo.VolumeLimitExpiryTimer != nil {
@@ -375,7 +375,7 @@ func (p *Processor) updateGrantedQuota(
 									urrList := []*smf_context.URR{urr}
 									upf := smf_context.GetUpfById(ui.UPFID)
 									if upf != nil {
-										QueryReport(smContext, upf, urrList, models.ChfConvergedChargingTriggerType_VOLUME_LIMIT)
+										QueryReport(smContext, upf, urrList, models.Chf_ConvCharging_TriggerType_VOLUME_LIMIT)
 									}
 								},
 								func() {
@@ -385,7 +385,7 @@ func (p *Processor) updateGrantedQuota(
 								})
 						}
 					}
-				case models.ChfConvergedChargingTriggerType_MAX_NUMBER_OF_CHANGES_IN_CHARGING_CONDITIONS:
+				case models.Chf_ConvCharging_TriggerType_MAX_NUMBER_OF_CHANGES_IN_CHARGING_CONDITIONS:
 					switch chgInfo.ChargingLevel {
 					case smf_context.PduSessionCharging:
 						chgInfo.EventLimitExpiryTimer = smf_context.NewTimer(time.Duration(t.EventLimit)*time.Second, 1,
@@ -395,7 +395,7 @@ func (p *Processor) updateGrantedQuota(
 								urrList := []*smf_context.URR{urr}
 								upf := smf_context.GetUpfById(ui.UPFID)
 								if upf != nil {
-									QueryReport(smContext, upf, urrList, models.ChfConvergedChargingTriggerType_VOLUME_LIMIT)
+									QueryReport(smContext, upf, urrList, models.Chf_ConvCharging_TriggerType_VOLUME_LIMIT)
 									p.ReportUsageAndUpdateQuota(smContext)
 								}
 							},
@@ -407,20 +407,20 @@ func (p *Processor) updateGrantedQuota(
 						smContext.Log.Tracef("MAX_NUMBER_OF_CHANGES_IN_CHARGING_CONDITIONS" +
 							"should only be applied to PDU session level charging")
 					}
-				case models.ChfConvergedChargingTriggerType_QUOTA_THRESHOLD:
+				case models.Chf_ConvCharging_TriggerType_QUOTA_THRESHOLD:
 					if ui.VolumeQuotaThreshold != 0 {
 						trigger.Volth = true
 						urr.VolumeThreshold = uint64(ui.VolumeQuotaThreshold)
 					}
 				// The difference between the quota validity time and the volume limit is
 				// that the validity time is counted by the UPF, the volume limit is counted by the SMF
-				case models.ChfConvergedChargingTriggerType_VALIDITY_TIME:
+				case models.Chf_ConvCharging_TriggerType_VALIDITY_TIME:
 					if ui.ValidityTime != 0 {
 						urr.ReportingTrigger.Quvti = true
 						urr.QuotaValidityTime = time.Now().Add(time.Second * time.Duration(ui.ValidityTime))
 					}
-				case models.ChfConvergedChargingTriggerType_QUOTA_EXHAUSTED:
-					if chgInfo.ChargingMethod == models.QuotaManagementIndicator_ONLINE_CHARGING {
+				case models.Chf_ConvCharging_TriggerType_QUOTA_EXHAUSTED:
+					if chgInfo.ChargingMethod == models.Chf_ConvCharging_QuotaManagementIndicator_ONLINE_CHARGING {
 						if ui.GrantedUnit != nil {
 							trigger.Volqu = true
 							urr.VolumeQuota = uint64(ui.GrantedUnit.TotalVolume)

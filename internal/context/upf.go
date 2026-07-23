@@ -260,9 +260,9 @@ func NewUPF(nodeID *pfcpType.NodeID, ifaces []*factory.InterfaceUpfInfoItem) (up
 		upIface := NewUPFInterfaceInfo(iface)
 
 		switch iface.InterfaceType {
-		case models.UpInterfaceType_N3:
+		case models.Nrf_NFMgmt_UPInterfaceType_N3:
 			upf.N3Interfaces = append(upf.N3Interfaces, upIface)
-		case models.UpInterfaceType_N9:
+		case models.Nrf_NFMgmt_UPInterfaceType_N9:
 			upf.N9Interfaces = append(upf.N9Interfaces, upIface)
 		}
 	}
@@ -272,9 +272,9 @@ func NewUPF(nodeID *pfcpType.NodeID, ifaces []*factory.InterfaceUpfInfoItem) (up
 
 // *** add unit test ***//
 // GetInterface return the UPFInterfaceInfo that match input cond
-func (upf *UPF) GetInterface(interfaceType models.UpInterfaceType, dnn string) *UPFInterfaceInfo {
+func (upf *UPF) GetInterface(interfaceType models.Nrf_NFMgmt_UPInterfaceType, dnn string) *UPFInterfaceInfo {
 	switch interfaceType {
-	case models.UpInterfaceType_N3:
+	case models.Nrf_NFMgmt_UPInterfaceType_N3:
 		for i, iface := range upf.N3Interfaces {
 			for _, nwInst := range iface.NetworkInstances {
 				if nwInst == dnn {
@@ -282,7 +282,7 @@ func (upf *UPF) GetInterface(interfaceType models.UpInterfaceType, dnn string) *
 				}
 			}
 		}
-	case models.UpInterfaceType_N9:
+	case models.Nrf_NFMgmt_UPInterfaceType_N9:
 		for i, iface := range upf.N9Interfaces {
 			for _, nwInst := range iface.NetworkInstances {
 				if nwInst == dnn {

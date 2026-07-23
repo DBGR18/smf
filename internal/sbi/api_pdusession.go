@@ -90,9 +90,9 @@ func (s *Server) getPDUSessionRoutes() []Route {
 // HTTPPostSmContexts - Create SM Context
 func (s *Server) HTTPPostSmContexts(c *gin.Context) {
 	logger.PduSessLog.Info("Receive Create SM Context Request")
-	var request models.PostSmContextsRequest
+	var request models.PostSmContextsRequestBody
 
-	request.JsonData = new(models.SmfPduSessionSmContextCreateData)
+	request.JsonData = new(models.Smf_PDUSess_SmContextCreateData)
 
 	contentType := strings.Split(c.GetHeader("Content-Type"), ";")
 	var err error
@@ -139,8 +139,8 @@ func (s *Server) HTTPPostSmContexts(c *gin.Context) {
 // HTTPUpdateSmContext - Update SM Context
 func (s *Server) HTTPUpdateSmContext(c *gin.Context) {
 	logger.PduSessLog.Info("Receive Update SM Context Request")
-	var request models.UpdateSmContextRequest
-	request.JsonData = new(models.SmfPduSessionSmContextUpdateData)
+	var request models.UpdateSmContextRequestBody
+	request.JsonData = new(models.Smf_PDUSess_SmContextUpdateData)
 
 	contentType := strings.Split(c.GetHeader("Content-Type"), ";")
 	var err error
@@ -167,8 +167,8 @@ func (s *Server) HTTPRetrieveSmContext(c *gin.Context) {
 // HTTPReleaseSmContext - Release SM Context
 func (s *Server) HTTPReleaseSmContext(c *gin.Context) {
 	logger.PduSessLog.Info("Receive Release SM Context Request")
-	var request models.ReleaseSmContextRequest
-	request.JsonData = new(models.SmfPduSessionSmContextReleaseData)
+	var request models.ReleaseSmContextRequestBody
+	request.JsonData = new(models.Smf_PDUSess_SmContextReleaseData)
 
 	contentType := strings.Split(c.GetHeader("Content-Type"), ";")
 	var err error

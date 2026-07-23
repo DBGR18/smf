@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	nasie "github.com/free5gc/nas/ie"
+	"github.com/free5gc/openapi/mediatype/multipart"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp"
 	"github.com/free5gc/pfcp/pfcpType"
@@ -108,7 +109,7 @@ func ActivateUPFSession(
 }
 
 func QueryReport(smContext *smf_context.SMContext, upf *smf_context.UPF,
-	urrs []*smf_context.URR, reportResaon models.ChfConvergedChargingTriggerType,
+	urrs []*smf_context.URR, reportResaon models.Chf_ConvCharging_TriggerType,
 ) {
 	for _, urr := range urrs {
 		smContext.SetUrrState(upf.UUID(), urr.URRID, smf_context.RULE_QUERY)
@@ -188,7 +189,7 @@ func modifyExistingPfcpSession(
 	smContext *smf_context.SMContext,
 	state *PFCPState,
 	resCh chan<- SendPfcpResult,
-	reportResaon models.ChfConvergedChargingTriggerType,
+	reportResaon models.Chf_ConvCharging_TriggerType,
 ) {
 	logger.PduSessLog.Infoln("Sending PFCP Session Modification Request")
 
@@ -276,11 +277,11 @@ func (p *Processor) sendPDUSessionEstablishmentReject(
 		return
 	}
 
-	n1n2Request := models.N1N2MessageTransferRequest{
-		BinaryDataN1Message: smNasBuf,
-		JsonData: &models.N1N2MessageTransferReqData{
+	n1n2Request := models.N1N2MessageTransferRequestBody{
+		BinaryDataN1Message: &multipart.RelatedContent{ContentID: "GSM_NAS", Content: smNasBuf},
+		JsonData: &models.Amf_Comm_N1N2MessageTransferReqData{
 			PduSessionId: smContext.PDUSessionID,
-			N1MessageContainer: &models.N1MessageContainer{
+			N1MessageContainer: &models.Amf_Comm_N1MessageContainer{
 				N1MessageClass:   "SM",
 				N1MessageContent: &models.RefToBinaryData{ContentId: "GSM_NAS"},
 			},
@@ -289,7 +290,8 @@ func (p *Processor) sendPDUSessionEstablishmentReject(
 
 	smContext.SetState(smf_context.InActive)
 
-	ctx, _, errToken := smf_context.GetSelf().GetTokenCtx(models.ServiceName_NAMF_COMM, models.NrfNfManagementNfType_AMF)
+	ctx, _, errToken := smf_context.GetSelf().GetTokenCtx(
+		models.Nrf_NFMgmt_ServiceName_NAMF_COMM, models.Nrf_NFMgmt_NFType_AMF)
 	if errToken != nil {
 		logger.PduSessLog.Warnf("Get NAMF_COMM context failed: %s", errToken)
 		return
@@ -301,7 +303,7 @@ func (p *Processor) sendPDUSessionEstablishmentReject(
 		return
 	}
 
-	if rspData.Cause == models.N1N2MessageTransferCause_N1_MSG_NOT_TRANSFERRED {
+	if rspData.Cause == models.Amf_Comm_N1N2MessageTransferCause_N1_MSG_NOT_TRANSFERRED {
 		logger.PduSessLog.Warnf("%v", rspData.Cause)
 	}
 	p.RemoveSMContextFromAllNF(smContext, true)
@@ -322,21 +324,21 @@ func (p *Processor) sendPDUSessionEstablishmentAccept(
 		return
 	}
 
-	n1n2Request := models.N1N2MessageTransferRequest{
-		BinaryDataN1Message:     smNasBuf,
-		BinaryDataN2Information: n2Pdu,
-		JsonData: &models.N1N2MessageTransferReqData{
+	n1n2Request := models.N1N2MessageTransferRequestBody{
+		BinaryDataN1Message:     &multipart.RelatedContent{ContentID: "GSM_NAS", Content: smNasBuf},
+		BinaryDataN2Information: &multipart.RelatedContent{ContentID: "N2SmInformation", Content: n2Pdu},
+		JsonData: &models.Amf_Comm_N1N2MessageTransferReqData{
 			PduSessionId: smContext.PDUSessionID,
-			N1MessageContainer: &models.N1MessageContainer{
+			N1MessageContainer: &models.Amf_Comm_N1MessageContainer{
 				N1MessageClass:   "SM",
 				N1MessageContent: &models.RefToBinaryData{ContentId: "GSM_NAS"},
 			},
-			N2InfoContainer: &models.N2InfoContainer{
-				N2InformationClass: models.N2InformationClass_SM,
-				SmInfo: &models.N2SmInformation{
+			N2InfoContainer: &models.Amf_Comm_N2InfoContainer{
+				N2InformationClass: models.Amf_Comm_N2InformationClass_SM,
+				SmInfo: &models.Amf_Comm_N2SmInformation{
 					PduSessionId: smContext.PDUSessionID,
-					N2InfoContent: &models.N2InfoContent{
-						NgapIeType: models.AmfCommunicationNgapIeType_PDU_RES_SETUP_REQ,
+					N2InfoContent: &models.Amf_Comm_N2InfoContent{
+						NgapIeType: models.Amf_Comm_NgapIeType_PDU_RES_SETUP_REQ,
 						NgapData: &models.RefToBinaryData{
 							ContentId: "N2SmInformation",
 						},
@@ -347,7 +349,7 @@ func (p *Processor) sendPDUSessionEstablishmentAccept(
 		},
 	}
 
-	ctx, _, err := smf_context.GetSelf().GetTokenCtx(models.ServiceName_NAMF_COMM, models.NrfNfManagementNfType_AMF)
+	ctx, _, err := smf_context.GetSelf().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NAMF_COMM, models.Nrf_NFMgmt_NFType_AMF)
 	if err != nil {
 		logger.PduSessLog.Warnf("Get NAMF_COMM context failed: %s", err)
 		return
@@ -362,7 +364,7 @@ func (p *Processor) sendPDUSessionEstablishmentAccept(
 
 	smContext.SetState(smf_context.Active)
 
-	if rspData.Cause == models.N1N2MessageTransferCause_N1_MSG_NOT_TRANSFERRED {
+	if rspData.Cause == models.Amf_Comm_N1N2MessageTransferCause_N1_MSG_NOT_TRANSFERRED {
 		logger.PduSessLog.Warnf("%v", rspData.Cause)
 	}
 }

@@ -1,14 +1,14 @@
 package consumer
 
 import (
-	"github.com/free5gc/openapi/amf/Communication"
-	"github.com/free5gc/openapi/chf/ConvergedCharging"
-	"github.com/free5gc/openapi/nrf/NFDiscovery"
-	"github.com/free5gc/openapi/nrf/NFManagement"
-	"github.com/free5gc/openapi/pcf/SMPolicyControl"
-	"github.com/free5gc/openapi/smf/PDUSession"
-	"github.com/free5gc/openapi/udm/SubscriberDataManagement"
-	"github.com/free5gc/openapi/udm/UEContextManagement"
+	"github.com/free5gc/openapi/amf/Comm"
+	"github.com/free5gc/openapi/chf/ConvCharging"
+	"github.com/free5gc/openapi/nrf/NFDisc"
+	"github.com/free5gc/openapi/nrf/NFMgmt"
+	"github.com/free5gc/openapi/pcf/SMPolCtrl"
+	"github.com/free5gc/openapi/smf/PDUSess"
+	"github.com/free5gc/openapi/udm/SDM"
+	"github.com/free5gc/openapi/udm/UECM"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/pkg/app"
 )
@@ -33,34 +33,34 @@ func NewConsumer(smf app.App) (*Consumer, error) {
 
 	c.nsmfService = &nsmfService{
 		consumer:          c,
-		PDUSessionClients: make(map[string]*PDUSession.APIClient),
+		PDUSessionClients: make(map[string]*PDUSess.APIClient),
 	}
 
 	c.namfService = &namfService{
 		consumer:             c,
-		CommunicationClients: make(map[string]*Communication.APIClient),
+		CommunicationClients: make(map[string]*Comm.APIClient),
 	}
 
 	c.nchfService = &nchfService{
 		consumer:                 c,
-		ConvergedChargingClients: make(map[string]*ConvergedCharging.APIClient),
+		ConvergedChargingClients: make(map[string]*ConvCharging.APIClient),
 	}
 
 	c.nudmService = &nudmService{
 		consumer:                        c,
-		SubscriberDataManagementClients: make(map[string]*SubscriberDataManagement.APIClient),
-		UEContextManagementClients:      make(map[string]*UEContextManagement.APIClient),
+		SubscriberDataManagementClients: make(map[string]*SDM.APIClient),
+		UEContextManagementClients:      make(map[string]*UECM.APIClient),
 	}
 
 	c.nnrfService = &nnrfService{
 		consumer:            c,
-		NFManagementClients: make(map[string]*NFManagement.APIClient),
-		NFDiscoveryClients:  make(map[string]*NFDiscovery.APIClient),
+		NFManagementClients: make(map[string]*NFMgmt.APIClient),
+		NFDiscoveryClients:  make(map[string]*NFDisc.APIClient),
 	}
 
 	c.npcfService = &npcfService{
 		consumer:               c,
-		SMPolicyControlClients: make(map[string]*SMPolicyControl.APIClient),
+		SMPolicyControlClients: make(map[string]*SMPolCtrl.APIClient),
 	}
 
 	c.nbsfService = &nbsfService{

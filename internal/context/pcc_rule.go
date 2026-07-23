@@ -15,20 +15,20 @@ import (
 
 // PCCRule - Policy and Charging Rule
 type PCCRule struct {
-	*models.PccRule
+	*models.Pcf_SMPolCtrl_PccRule
 	QFI uint8
 	// related Data
 	Datapath *DataPath
 }
 
 // NewPCCRule - create PCC rule from OpenAPI models
-func NewPCCRule(mPcc *models.PccRule) *PCCRule {
+func NewPCCRule(mPcc *models.Pcf_SMPolCtrl_PccRule) *PCCRule {
 	if mPcc == nil {
 		return nil
 	}
 
 	return &PCCRule{
-		PccRule: mPcc,
+		Pcf_SMPolCtrl_PccRule: mPcc,
 	}
 }
 
@@ -195,7 +195,7 @@ func portRangeToString(p *flowdesc.PortRange) string {
 }
 
 func createNasPacketFilter(
-	pfInfo *models.FlowInformation,
+	pfInfo *models.Pcf_SMPolCtrl_FlowInformation,
 	smCtx *SMContext,
 	ipFilterRule *flowdesc.IPFilterRule,
 	srcP *flowdesc.PortRange,
@@ -211,11 +211,11 @@ func createNasPacketFilter(
 	smCtx.PacketFilterIDToNASPFID[pfInfo.PackFiltId] = uint8(pfId)
 
 	switch pfInfo.FlowDirection {
-	case models.FlowDirection_DOWNLINK:
+	case models.Pcf_SMPolCtrl_FlowDirectionRm_DOWNLINK:
 		pf.Dir = nasie.PFD_Downlink
-	case models.FlowDirection_UPLINK:
+	case models.Pcf_SMPolCtrl_FlowDirectionRm_UPLINK:
 		pf.Dir = nasie.PFD_Uplink
-	case models.FlowDirection_BIDIRECTIONAL:
+	case models.Pcf_SMPolCtrl_FlowDirectionRm_BIDIRECTIONAL:
 		pf.Dir = nasie.PFD_BiDir
 	}
 
@@ -255,7 +255,7 @@ func createNasPacketFilter(
 	return pf, nil
 }
 
-func BuildNASPacketFiltersFromFlowInformation(pfInfo *models.FlowInformation,
+func BuildNASPacketFiltersFromFlowInformation(pfInfo *models.Pcf_SMPolCtrl_FlowInformation,
 	smCtx *SMContext,
 ) ([]nasie.PacketFilter, error) {
 	var pfList []nasie.PacketFilter

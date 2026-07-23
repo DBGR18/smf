@@ -24,7 +24,7 @@ const (
 )
 
 type ChargingInfo struct {
-	ChargingMethod         models.QuotaManagementIndicator
+	ChargingMethod         models.Chf_ConvCharging_QuotaManagementIndicator
 	VolumeLimitExpiryTimer *Timer
 	EventLimitExpiryTimer  *Timer
 	ChargingLevel          ChargingLevel

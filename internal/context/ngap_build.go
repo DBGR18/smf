@@ -111,10 +111,10 @@ func buildSecurityIndication(ctx *SMContext) *ngapie.SecurityIndication {
 		integrityProtectionInd == ngapie.IntegrityProtectionIndicationPresentPreferred {
 		securityIndication.MaximumIntegrityProtectedDataRateUL = new(ngapie.MaximumIntegrityProtectedDataRate)
 		switch maximumDataRatePerUEForUserPlaneIntegrityProtectionForUpLink {
-		case models.MaxIntegrityProtectedDataRate_MAX_UE_RATE:
+		case models.Smf_PDUSess_MaxIntegrityProtectedDataRate_MAX_UE_RATE:
 			securityIndication.MaximumIntegrityProtectedDataRateUL.Value = ngapie.
 				MaximumIntegrityProtectedDataRatePresentMaximumUERate
-		case models.MaxIntegrityProtectedDataRate__64_KBPS:
+		case models.Smf_PDUSess_MaxIntegrityProtectedDataRate_64_KBPS:
 			securityIndication.MaximumIntegrityProtectedDataRateUL.Value = ngapie.
 				MaximumIntegrityProtectedDataRatePresentBitrate64kbs
 		}
@@ -223,7 +223,7 @@ func BuildPDUSessionResourceSetupRequestTransfer(ctx *SMContext) ([]byte, error)
 
 	// Security Indication to NG-RAN (optional) TS 38.413 9.3.1.27
 	// Only over 3GPP access TS 23.501 5.10.3
-	if ctx.AnType == models.AccessType__3_GPP_ACCESS && ctx.UpSecurity != nil {
+	if ctx.AnType == models.AccessType_3_GPP_ACCESS && ctx.UpSecurity != nil {
 		ieList = append(ieList, ngapie.PDUSessionResourceSetupRequestTransferIEs{
 			SecurityIndication: buildSecurityIndication(ctx),
 		})

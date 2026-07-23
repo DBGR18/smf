@@ -665,9 +665,9 @@ func (dataPath *DataPath) ActivateTunnelAndPDR(smContext *SMContext, precedence 
 
 			var iface *UPFInterfaceInfo
 			if curDataPathNode.IsANUPF() {
-				iface = ULDestUPF.GetInterface(models.UpInterfaceType_N3, smContext.Dnn)
+				iface = ULDestUPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N3, smContext.Dnn)
 			} else {
-				iface = ULDestUPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = ULDestUPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 			}
 
 			if iface == nil {
@@ -724,7 +724,7 @@ func (dataPath *DataPath) ActivateTunnelAndPDR(smContext *SMContext, precedence 
 
 			if nextULDest := curDataPathNode.Next(); nextULDest != nil {
 				nextULTunnel := nextULDest.UpLinkTunnel
-				iface = nextULTunnel.DestEndPoint.UPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = nextULTunnel.DestEndPoint.UPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 
 				if upIP, err := iface.IP(smContext.SelectedPDUSessionType); err != nil {
 					logger.CtxLog.Errorln("ActivateTunnelAndPDR failed", err)
@@ -773,7 +773,7 @@ func (dataPath *DataPath) ActivateTunnelAndPDR(smContext *SMContext, precedence 
 					OuterHeaderRemovalDescription: pfcpType.OuterHeaderRemovalGtpUUdpIpv4,
 				}
 
-				iface = DLDestUPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = DLDestUPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 				if upIP, err := iface.IP(smContext.SelectedPDUSessionType); err != nil {
 					logger.CtxLog.Errorln("ActivateTunnelAndPDR failed", err)
 					return
@@ -815,7 +815,7 @@ func (dataPath *DataPath) ActivateTunnelAndPDR(smContext *SMContext, precedence 
 					Nocp: false,
 				}
 
-				iface = nextDLDest.UPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = nextDLDest.UPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 
 				if upIP, err := iface.IP(smContext.SelectedPDUSessionType); err != nil {
 					logger.CtxLog.Errorln("ActivateTunnelAndPDR failed", err)
@@ -962,9 +962,9 @@ func (dataPath *DataPath) ActivateDcTunnelAndPDR(smContext *SMContext, precedenc
 
 			var iface *UPFInterfaceInfo
 			if curDataPathNode.IsANUPF() {
-				iface = ULDestUPF.GetInterface(models.UpInterfaceType_N3, smContext.Dnn)
+				iface = ULDestUPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N3, smContext.Dnn)
 			} else {
-				iface = ULDestUPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = ULDestUPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 			}
 
 			if iface == nil {
@@ -1021,7 +1021,7 @@ func (dataPath *DataPath) ActivateDcTunnelAndPDR(smContext *SMContext, precedenc
 
 			if nextULDest := curDataPathNode.Next(); nextULDest != nil {
 				nextULTunnel := nextULDest.UpLinkTunnel
-				iface = nextULTunnel.DestEndPoint.UPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = nextULTunnel.DestEndPoint.UPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 
 				if upIP, err := iface.IP(smContext.SelectedPDUSessionType); err != nil {
 					logger.CtxLog.Errorln("ActivateTunnelAndPDR failed", err)
@@ -1070,7 +1070,7 @@ func (dataPath *DataPath) ActivateDcTunnelAndPDR(smContext *SMContext, precedenc
 					OuterHeaderRemovalDescription: pfcpType.OuterHeaderRemovalGtpUUdpIpv4,
 				}
 
-				iface = DLDestUPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = DLDestUPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 				if upIP, err := iface.IP(smContext.SelectedPDUSessionType); err != nil {
 					logger.CtxLog.Errorln("ActivateDcTunnelAndPDR failed", err)
 					return
@@ -1109,7 +1109,7 @@ func (dataPath *DataPath) ActivateDcTunnelAndPDR(smContext *SMContext, precedenc
 					Nocp: false,
 				}
 
-				iface = nextDLDest.UPF.GetInterface(models.UpInterfaceType_N9, smContext.Dnn)
+				iface = nextDLDest.UPF.GetInterface(models.Nrf_NFMgmt_UPInterfaceType_N9, smContext.Dnn)
 
 				if upIP, err := iface.IP(smContext.SelectedPDUSessionType); err != nil {
 					logger.CtxLog.Errorln("ActivateDcTunnelAndPDR failed", err)
@@ -1222,7 +1222,7 @@ func (p *DataPath) GetChargingUrr(smContext *SMContext) []*URR {
 }
 
 func (p *DataPath) AddChargingRules(smContext *SMContext, chgLevel ChargingLevel,
-	chgData *models.ChargingData, pduChgDatas []*models.ChargingData,
+	chgData *models.Pcf_SMPolCtrl_ChargingData, pduChgDatas []*models.Pcf_SMPolCtrl_ChargingData,
 ) {
 	logger.ChargingLog.Tracef("AddChargingRules: type[%v], data:[%+v]", chgLevel, chgData)
 	if chgData == nil && len(pduChgDatas) == 0 {
@@ -1268,7 +1268,7 @@ func (p *DataPath) AddChargingRules(smContext *SMContext, chgLevel ChargingLevel
 	}
 }
 
-func (p *DataPath) CreateUrrAndChgInfo(smContext *SMContext, chgData *models.ChargingData,
+func (p *DataPath) CreateUrrAndChgInfo(smContext *SMContext, chgData *models.Pcf_SMPolCtrl_ChargingData,
 	chgLevel ChargingLevel, upf *UPF,
 ) (*URR, *ChargingInfo) {
 	urrIdInt, err := smContext.UrrIDGenerator.Allocate()
@@ -1290,12 +1290,12 @@ func (p *DataPath) CreateUrrAndChgInfo(smContext *SMContext, chgData *models.Cha
 	if chgData.Online {
 		// For online charging, URR need to report based on the volume threshold and time threshold
 		newURR, err2 = upf.AddURR(urrId, NewMeasureInformation(false, false), SetStartOfSDFTrigger())
-		chgInfo.ChargingMethod = models.QuotaManagementIndicator_ONLINE_CHARGING
+		chgInfo.ChargingMethod = models.Chf_ConvCharging_QuotaManagementIndicator_ONLINE_CHARGING
 	} else if chgData.Offline {
 		// For offline charging, URR only need to report based on the volume threshold
 		newURR, err2 = upf.AddURR(urrId, NewMeasureInformation(false, false),
 			NewVolumeThreshold(smContext.UrrReportThreshold))
-		chgInfo.ChargingMethod = models.QuotaManagementIndicator_OFFLINE_CHARGING
+		chgInfo.ChargingMethod = models.Chf_ConvCharging_QuotaManagementIndicator_OFFLINE_CHARGING
 	} else {
 		return nil, nil
 	}
@@ -1310,7 +1310,7 @@ func (p *DataPath) CreateUrrAndChgInfo(smContext *SMContext, chgData *models.Cha
 }
 
 func (p *DataPath) GetOrCreateUrr(smContext *SMContext, upf *UPF,
-	chgData *models.ChargingData, chgLevel ChargingLevel,
+	chgData *models.Pcf_SMPolCtrl_ChargingData, chgLevel ChargingLevel,
 ) *URR {
 	currentUUID := upf.UUID()
 
@@ -1332,7 +1332,7 @@ func (p *DataPath) GetOrCreateUrr(smContext *SMContext, upf *UPF,
 	return nil
 }
 
-func (p *DataPath) AddQoS(smContext *SMContext, qfi uint8, qos *models.QosData) {
+func (p *DataPath) AddQoS(smContext *SMContext, qfi uint8, qos *models.Pcf_SMPolCtrl_QosData) {
 	// QFI = 1 -> default QFI
 	if qos == nil && qfi != 1 {
 		return
@@ -1516,7 +1516,7 @@ func getQosIdKey(uuid uuid.UUID, qfi uint8) string {
 	return uuid.String() + ":" + strconv.Itoa(int(qfi))
 }
 
-func isGBRFlow(qos *models.QosData) bool {
+func isGBRFlow(qos *models.Pcf_SMPolCtrl_QosData) bool {
 	if qos == nil {
 		return false
 	}

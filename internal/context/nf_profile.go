@@ -9,9 +9,9 @@ import (
 )
 
 type NFProfile struct {
-	NFServices       *[]models.NrfNfManagementNfService
-	NFServiceVersion *[]models.NfServiceVersion
-	SMFInfo          *models.SmfInfo
+	NFServices       *[]models.Nrf_NFMgmt_NFService
+	NFServiceVersion *[]models.Nrf_NFMgmt_NFServiceVersion
+	SMFInfo          *models.Nrf_NFMgmt_SmfInfo
 	PLMNList         *[]models.PlmnId
 }
 
@@ -20,7 +20,7 @@ func (c *SMFContext) SetupNFProfile(nfProfileconfig *factory.Config) {
 	nfSetupTime := time.Now()
 
 	// set NfServiceVersion
-	c.NfProfile.NFServiceVersion = &[]models.NfServiceVersion{
+	c.NfProfile.NFServiceVersion = &[]models.Nrf_NFMgmt_NFServiceVersion{
 		{
 			ApiVersionInUri: "v1",
 			ApiFullVersion:  nfProfileconfig.GetVersion(),
@@ -29,16 +29,16 @@ func (c *SMFContext) SetupNFProfile(nfProfileconfig *factory.Config) {
 	}
 
 	// set NFServices
-	c.NfProfile.NFServices = new([]models.NrfNfManagementNfService)
+	c.NfProfile.NFServices = new([]models.Nrf_NFMgmt_NFService)
 	for _, serviceName := range nfProfileconfig.Configuration.ServiceNameList {
-		*c.NfProfile.NFServices = append(*c.NfProfile.NFServices, models.NrfNfManagementNfService{
+		*c.NfProfile.NFServices = append(*c.NfProfile.NFServices, models.Nrf_NFMgmt_NFService{
 			ServiceInstanceId: GetSelf().NfInstanceID + serviceName,
-			ServiceName:       models.ServiceName(serviceName),
+			ServiceName:       models.Nrf_NFMgmt_ServiceName(serviceName),
 			Versions:          *c.NfProfile.NFServiceVersion,
 			Scheme:            GetSelf().URIScheme,
-			NfServiceStatus:   models.NfServiceStatus_REGISTERED,
+			NfServiceStatus:   models.Nrf_NFMgmt_NFServiceStatus_REGISTERED,
 			ApiPrefix:         fmt.Sprintf("%s://%s:%d", GetSelf().URIScheme, GetSelf().RegisterIPv4, GetSelf().SBIPort),
-			IpEndPoints: []models.IpEndPoint{
+			IpEndPoints: []models.Nrf_NFMgmt_IpEndPoint{
 				{
 					Ipv4Address: GetSelf().RegisterIPv4,
 					Port:        int32(GetSelf().SBIPort),
@@ -48,7 +48,7 @@ func (c *SMFContext) SetupNFProfile(nfProfileconfig *factory.Config) {
 	}
 
 	// set smfInfo
-	c.NfProfile.SMFInfo = &models.SmfInfo{
+	c.NfProfile.SMFInfo = &models.Nrf_NFMgmt_SmfInfo{
 		SNssaiSmfInfoList: SNssaiSmfInfo(),
 	}
 
@@ -64,18 +64,18 @@ func (c *SMFContext) SetupNFProfile(nfProfileconfig *factory.Config) {
 	}
 }
 
-func SNssaiSmfInfo() []models.SnssaiSmfInfoItem {
-	snssaiInfo := make([]models.SnssaiSmfInfoItem, 0)
+func SNssaiSmfInfo() []models.Nrf_NFMgmt_SnssaiSmfInfoItem {
+	snssaiInfo := make([]models.Nrf_NFMgmt_SnssaiSmfInfoItem, 0)
 	for _, snssai := range smfContext.SnssaiInfos {
-		var snssaiInfoModel models.SnssaiSmfInfoItem
+		var snssaiInfoModel models.Nrf_NFMgmt_SnssaiSmfInfoItem
 		snssaiInfoModel.SNssai = &models.ExtSnssai{
 			Sst: snssai.Snssai.Sst,
 			Sd:  snssai.Snssai.Sd,
 		}
-		dnnModelList := make([]models.DnnSmfInfoItem, 0)
+		dnnModelList := make([]models.Nrf_NFMgmt_DnnSmfInfoItem, 0)
 
 		for dnn := range snssai.DnnInfos {
-			dnnModelList = append(dnnModelList, models.DnnSmfInfoItem{
+			dnnModelList = append(dnnModelList, models.Nrf_NFMgmt_DnnSmfInfoItem{
 				Dnn: dnn,
 			})
 		}

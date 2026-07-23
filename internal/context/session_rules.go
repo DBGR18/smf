@@ -7,18 +7,18 @@ import (
 // SessionRule - A session rule consists of policy information elements
 // associated with PDU session.
 type SessionRule struct {
-	*models.SessionRule
+	*models.Pcf_SMPolCtrl_SessionRule
 	DefQosQFI uint8
 }
 
 // NewSessionRule - create session rule from OpenAPI models
-func NewSessionRule(model *models.SessionRule) *SessionRule {
+func NewSessionRule(model *models.Pcf_SMPolCtrl_SessionRule) *SessionRule {
 	if model == nil {
 		return nil
 	}
 
 	return &SessionRule{
-		SessionRule: model,
-		DefQosQFI:   1,
+		Pcf_SMPolCtrl_SessionRule: model,
+		DefQosQFI:                 1,
 	}
 }

@@ -122,7 +122,7 @@ func TestApplySessionRules(t *testing.T) {
 
 	testCases := []struct {
 		name              string
-		decision          *models.SmPolicyDecision
+		decision          *models.Pcf_SMPolCtrl_SmPolicyDecision
 		noErr             bool
 		expectedSessRules map[string]*smf_context.SessionRule
 	}{
@@ -132,14 +132,14 @@ func TestApplySessionRules(t *testing.T) {
 		},
 		{
 			name: "Install first session rule",
-			decision: &models.SmPolicyDecision{
-				SessRules: map[string]*models.SessionRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				SessRules: map[string]*models.Pcf_SMPolCtrl_SessionRule{
 					"SessRuleId-1": {
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "1000 Kbps",
 							Downlink: "1000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -152,12 +152,12 @@ func TestApplySessionRules(t *testing.T) {
 			},
 			expectedSessRules: map[string]*smf_context.SessionRule{
 				"SessRuleId-1": {
-					SessionRule: &models.SessionRule{
+					Pcf_SMPolCtrl_SessionRule: &models.Pcf_SMPolCtrl_SessionRule{
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "1000 Kbps",
 							Downlink: "1000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -173,14 +173,14 @@ func TestApplySessionRules(t *testing.T) {
 		},
 		{
 			name: "Install second session rule",
-			decision: &models.SmPolicyDecision{
-				SessRules: map[string]*models.SessionRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				SessRules: map[string]*models.Pcf_SMPolCtrl_SessionRule{
 					"SessRuleId-2": {
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "1000 Kbps",
 							Downlink: "1000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -193,12 +193,12 @@ func TestApplySessionRules(t *testing.T) {
 			},
 			expectedSessRules: map[string]*smf_context.SessionRule{
 				"SessRuleId-1": {
-					SessionRule: &models.SessionRule{
+					Pcf_SMPolCtrl_SessionRule: &models.Pcf_SMPolCtrl_SessionRule{
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "1000 Kbps",
 							Downlink: "1000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -210,12 +210,12 @@ func TestApplySessionRules(t *testing.T) {
 					DefQosQFI: 1,
 				},
 				"SessRuleId-2": {
-					SessionRule: &models.SessionRule{
+					Pcf_SMPolCtrl_SessionRule: &models.Pcf_SMPolCtrl_SessionRule{
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "1000 Kbps",
 							Downlink: "1000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -231,14 +231,14 @@ func TestApplySessionRules(t *testing.T) {
 		},
 		{
 			name: "Modify first session rule",
-			decision: &models.SmPolicyDecision{
-				SessRules: map[string]*models.SessionRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				SessRules: map[string]*models.Pcf_SMPolCtrl_SessionRule{
 					"SessRuleId-1": {
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "5000 Kbps",
 							Downlink: "5000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -251,12 +251,12 @@ func TestApplySessionRules(t *testing.T) {
 			},
 			expectedSessRules: map[string]*smf_context.SessionRule{
 				"SessRuleId-1": {
-					SessionRule: &models.SessionRule{
+					Pcf_SMPolCtrl_SessionRule: &models.Pcf_SMPolCtrl_SessionRule{
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "5000 Kbps",
 							Downlink: "5000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -268,12 +268,12 @@ func TestApplySessionRules(t *testing.T) {
 					DefQosQFI: 1,
 				},
 				"SessRuleId-2": {
-					SessionRule: &models.SessionRule{
+					Pcf_SMPolCtrl_SessionRule: &models.Pcf_SMPolCtrl_SessionRule{
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "1000 Kbps",
 							Downlink: "1000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -289,19 +289,19 @@ func TestApplySessionRules(t *testing.T) {
 		},
 		{
 			name: "Delete first session rule",
-			decision: &models.SmPolicyDecision{
-				SessRules: map[string]*models.SessionRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				SessRules: map[string]*models.Pcf_SMPolCtrl_SessionRule{
 					"SessRuleId-1": nil,
 				},
 			},
 			expectedSessRules: map[string]*smf_context.SessionRule{
 				"SessRuleId-2": {
-					SessionRule: &models.SessionRule{
+					Pcf_SMPolCtrl_SessionRule: &models.Pcf_SMPolCtrl_SessionRule{
 						AuthSessAmbr: &models.Ambr{
 							Uplink:   "1000 Kbps",
 							Downlink: "1000 Kbps",
 						},
-						AuthDefQos: &models.AuthorizedDefaultQos{
+						AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 							Var5qi: 9,
 							Arp: &models.Arp{
 								PriorityLevel: 8,
@@ -317,8 +317,8 @@ func TestApplySessionRules(t *testing.T) {
 		},
 		{
 			name: "Delete second session rule",
-			decision: &models.SmPolicyDecision{
-				SessRules: map[string]*models.SessionRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				SessRules: map[string]*models.Pcf_SMPolCtrl_SessionRule{
 					"SessRuleId-2": nil,
 				},
 			},
@@ -347,11 +347,11 @@ func TestApplySessionRules(t *testing.T) {
 func TestApplyPccRules(t *testing.T) {
 	testCases := []struct {
 		name             string
-		decision         *models.SmPolicyDecision
+		decision         *models.Pcf_SMPolCtrl_SmPolicyDecision
 		noErr            bool
 		expectedErr      string
 		expectedPCCRules map[string]*smf_context.PCCRule
-		expectedQosDatas map[string]*models.QosData
+		expectedQosDatas map[string]*models.Pcf_SMPolCtrl_QosData
 		expectedTcDatas  map[string]*smf_context.TrafficControlData
 	}{
 		{
@@ -360,10 +360,10 @@ func TestApplyPccRules(t *testing.T) {
 		},
 		{
 			name: "Install first pcc rule",
-			decision: &models.SmPolicyDecision{
-				PccRules: map[string]*models.PccRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				PccRules: map[string]*models.Pcf_SMPolCtrl_PccRule{
 					"PccRuleId-1": {
-						FlowInfos: []models.FlowInformation{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.21 to 10.60.0.0/16",
 							},
@@ -374,15 +374,15 @@ func TestApplyPccRules(t *testing.T) {
 						RefTcData:  []string{"TcId-1"},
 					},
 				},
-				QosDecs: map[string]*models.QosData{
+				QosDecs: map[string]*models.Pcf_SMPolCtrl_QosData{
 					"QosId-1": {
 						QosId: "QosId-1",
 					},
 				},
-				TraffContDecs: map[string]*models.TrafficControlData{
+				TraffContDecs: map[string]*models.Pcf_SMPolCtrl_TrafficControlData{
 					"TcId-1": {
 						TcId: "TcId-1",
-						RouteToLocs: []*models.RouteToLocation{
+						RouteToLocs: []models.RouteToLocation{
 							{
 								Dnai: "mec",
 							},
@@ -392,8 +392,8 @@ func TestApplyPccRules(t *testing.T) {
 			},
 			expectedPCCRules: map[string]*smf_context.PCCRule{
 				"PccRuleId-1": {
-					PccRule: &models.PccRule{
-						FlowInfos: []models.FlowInformation{
+					Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.21 to 10.60.0.0/16",
 							},
@@ -405,16 +405,16 @@ func TestApplyPccRules(t *testing.T) {
 					},
 				},
 			},
-			expectedQosDatas: map[string]*models.QosData{
+			expectedQosDatas: map[string]*models.Pcf_SMPolCtrl_QosData{
 				"QosId-1": {
 					QosId: "QosId-1",
 				},
 			},
 			expectedTcDatas: map[string]*smf_context.TrafficControlData{
 				"TcId-1": {
-					TrafficControlData: &models.TrafficControlData{
+					Pcf_SMPolCtrl_TrafficControlData: &models.Pcf_SMPolCtrl_TrafficControlData{
 						TcId: "TcId-1",
-						RouteToLocs: []*models.RouteToLocation{
+						RouteToLocs: []models.RouteToLocation{
 							{
 								Dnai: "mec",
 							},
@@ -426,10 +426,10 @@ func TestApplyPccRules(t *testing.T) {
 		},
 		{
 			name: "Install second pcc rule",
-			decision: &models.SmPolicyDecision{
-				PccRules: map[string]*models.PccRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				PccRules: map[string]*models.Pcf_SMPolCtrl_PccRule{
 					"PccRuleId-2": {
-						FlowInfos: []models.FlowInformation{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.31 to 10.60.0.0/16",
 							},
@@ -440,7 +440,7 @@ func TestApplyPccRules(t *testing.T) {
 						RefTcData:  []string{"TcId-1"},
 					},
 				},
-				QosDecs: map[string]*models.QosData{
+				QosDecs: map[string]*models.Pcf_SMPolCtrl_QosData{
 					"QosId-2": {
 						QosId: "QosId-2",
 					},
@@ -448,8 +448,8 @@ func TestApplyPccRules(t *testing.T) {
 			},
 			expectedPCCRules: map[string]*smf_context.PCCRule{
 				"PccRuleId-1": {
-					PccRule: &models.PccRule{
-						FlowInfos: []models.FlowInformation{
+					Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.21 to 10.60.0.0/16",
 							},
@@ -461,8 +461,8 @@ func TestApplyPccRules(t *testing.T) {
 					},
 				},
 				"PccRuleId-2": {
-					PccRule: &models.PccRule{
-						FlowInfos: []models.FlowInformation{
+					Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.31 to 10.60.0.0/16",
 							},
@@ -474,7 +474,7 @@ func TestApplyPccRules(t *testing.T) {
 					},
 				},
 			},
-			expectedQosDatas: map[string]*models.QosData{
+			expectedQosDatas: map[string]*models.Pcf_SMPolCtrl_QosData{
 				"QosId-1": {
 					QosId: "QosId-1",
 				},
@@ -484,9 +484,9 @@ func TestApplyPccRules(t *testing.T) {
 			},
 			expectedTcDatas: map[string]*smf_context.TrafficControlData{
 				"TcId-1": {
-					TrafficControlData: &models.TrafficControlData{
+					Pcf_SMPolCtrl_TrafficControlData: &models.Pcf_SMPolCtrl_TrafficControlData{
 						TcId: "TcId-1",
-						RouteToLocs: []*models.RouteToLocation{
+						RouteToLocs: []models.RouteToLocation{
 							{
 								Dnai: "mec",
 							},
@@ -497,44 +497,11 @@ func TestApplyPccRules(t *testing.T) {
 			noErr: true,
 		},
 		{
-			name: "Install pcc rule with nil RouteToLocs element",
-			decision: &models.SmPolicyDecision{
-				PccRules: map[string]*models.PccRule{
-					"PccRuleId-bad-route": {
-						FlowInfos: []models.FlowInformation{
-							{
-								FlowDescription: "permit out ip from 192.168.0.31 to 10.60.0.0/16",
-							},
-						},
-						PccRuleId:  "PccRuleId-bad-route",
-						Precedence: 25,
-						RefQosData: []string{"QosId-bad-route"},
-						RefTcData:  []string{"TcId-bad-route"},
-					},
-				},
-				QosDecs: map[string]*models.QosData{
-					"QosId-bad-route": {
-						QosId: "QosId-bad-route",
-					},
-				},
-				TraffContDecs: map[string]*models.TrafficControlData{
-					"TcId-bad-route": {
-						TcId: "TcId-bad-route",
-						RouteToLocs: []*models.RouteToLocation{
-							nil,
-						},
-					},
-				},
-			},
-			noErr:       false,
-			expectedErr: "RouteToLocs contains nil element for pcc rule[PccRuleId-bad-route]",
-		},
-		{
 			name: "modify first pcc rule",
-			decision: &models.SmPolicyDecision{
-				PccRules: map[string]*models.PccRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				PccRules: map[string]*models.Pcf_SMPolCtrl_PccRule{
 					"PccRuleId-1": {
-						FlowInfos: []models.FlowInformation{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.22 to 10.60.0.0/16",
 							},
@@ -545,7 +512,7 @@ func TestApplyPccRules(t *testing.T) {
 						RefTcData:  []string{"TcId-1"},
 					},
 				},
-				QosDecs: map[string]*models.QosData{
+				QosDecs: map[string]*models.Pcf_SMPolCtrl_QosData{
 					"QosId-3": {
 						QosId: "QosId-3",
 					},
@@ -553,8 +520,8 @@ func TestApplyPccRules(t *testing.T) {
 			},
 			expectedPCCRules: map[string]*smf_context.PCCRule{
 				"PccRuleId-1": {
-					PccRule: &models.PccRule{
-						FlowInfos: []models.FlowInformation{
+					Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.22 to 10.60.0.0/16",
 							},
@@ -566,8 +533,8 @@ func TestApplyPccRules(t *testing.T) {
 					},
 				},
 				"PccRuleId-2": {
-					PccRule: &models.PccRule{
-						FlowInfos: []models.FlowInformation{
+					Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.31 to 10.60.0.0/16",
 							},
@@ -579,7 +546,7 @@ func TestApplyPccRules(t *testing.T) {
 					},
 				},
 			},
-			expectedQosDatas: map[string]*models.QosData{
+			expectedQosDatas: map[string]*models.Pcf_SMPolCtrl_QosData{
 				"QosId-2": {
 					QosId: "QosId-2",
 				},
@@ -589,9 +556,9 @@ func TestApplyPccRules(t *testing.T) {
 			},
 			expectedTcDatas: map[string]*smf_context.TrafficControlData{
 				"TcId-1": {
-					TrafficControlData: &models.TrafficControlData{
+					Pcf_SMPolCtrl_TrafficControlData: &models.Pcf_SMPolCtrl_TrafficControlData{
 						TcId: "TcId-1",
-						RouteToLocs: []*models.RouteToLocation{
+						RouteToLocs: []models.RouteToLocation{
 							{
 								Dnai: "mec",
 							},
@@ -603,15 +570,15 @@ func TestApplyPccRules(t *testing.T) {
 		},
 		{
 			name: "delete second pcc rule",
-			decision: &models.SmPolicyDecision{
-				PccRules: map[string]*models.PccRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				PccRules: map[string]*models.Pcf_SMPolCtrl_PccRule{
 					"PccRuleId-2": nil,
 				},
 			},
 			expectedPCCRules: map[string]*smf_context.PCCRule{
 				"PccRuleId-1": {
-					PccRule: &models.PccRule{
-						FlowInfos: []models.FlowInformation{
+					Pcf_SMPolCtrl_PccRule: &models.Pcf_SMPolCtrl_PccRule{
+						FlowInfos: []models.Pcf_SMPolCtrl_FlowInformation{
 							{
 								FlowDescription: "permit out ip from 192.168.0.22 to 10.60.0.0/16",
 							},
@@ -623,16 +590,16 @@ func TestApplyPccRules(t *testing.T) {
 					},
 				},
 			},
-			expectedQosDatas: map[string]*models.QosData{
+			expectedQosDatas: map[string]*models.Pcf_SMPolCtrl_QosData{
 				"QosId-3": {
 					QosId: "QosId-3",
 				},
 			},
 			expectedTcDatas: map[string]*smf_context.TrafficControlData{
 				"TcId-1": {
-					TrafficControlData: &models.TrafficControlData{
+					Pcf_SMPolCtrl_TrafficControlData: &models.Pcf_SMPolCtrl_TrafficControlData{
 						TcId: "TcId-1",
-						RouteToLocs: []*models.RouteToLocation{
+						RouteToLocs: []models.RouteToLocation{
 							{
 								Dnai: "mec",
 							},
@@ -644,13 +611,13 @@ func TestApplyPccRules(t *testing.T) {
 		},
 		{
 			name: "delete first pcc rule",
-			decision: &models.SmPolicyDecision{
-				PccRules: map[string]*models.PccRule{
+			decision: &models.Pcf_SMPolCtrl_SmPolicyDecision{
+				PccRules: map[string]*models.Pcf_SMPolCtrl_PccRule{
 					"PccRuleId-1": nil,
 				},
 			},
 			expectedPCCRules: map[string]*smf_context.PCCRule{},
-			expectedQosDatas: map[string]*models.QosData{},
+			expectedQosDatas: map[string]*models.Pcf_SMPolCtrl_QosData{},
 			expectedTcDatas:  map[string]*smf_context.TrafficControlData{},
 			noErr:            true,
 		},
@@ -669,7 +636,7 @@ func TestApplyPccRules(t *testing.T) {
 	smctx.SMLock.Lock()
 	defer smctx.SMLock.Unlock()
 
-	smctx.SmfPduSessionSmContextCreateData = &models.SmfPduSessionSmContextCreateData{
+	smctx.Smf_PDUSess_SmContextCreateData = &models.Smf_PDUSess_SmContextCreateData{
 		Supi:         "imsi-208930000000002",
 		Pei:          "imeisv-1110000000000000",
 		Gpsi:         "msisdn-0900000000",
@@ -695,12 +662,12 @@ func TestApplyPccRules(t *testing.T) {
 	}
 	smctx.SelectedPDUSessionType = 1
 	smctx.SessionRules["SessRuleId-1"] = &smf_context.SessionRule{
-		SessionRule: &models.SessionRule{
+		Pcf_SMPolCtrl_SessionRule: &models.Pcf_SMPolCtrl_SessionRule{
 			AuthSessAmbr: &models.Ambr{
 				Uplink:   "1000 Kbps",
 				Downlink: "1000 Kbps",
 			},
-			AuthDefQos: &models.AuthorizedDefaultQos{
+			AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 				Var5qi: 9,
 				Arp: &models.Arp{
 					PriorityLevel: 8,
@@ -711,7 +678,7 @@ func TestApplyPccRules(t *testing.T) {
 		},
 	}
 	smctx.SelectedSessionRuleID = "SessRuleId-1"
-	smctx.DnnConfiguration = models.DnnConfiguration{
+	smctx.DnnConfiguration = models.Udm_SDM_DnnConfiguration{
 		SessionAmbr: &models.Ambr{
 			Uplink:   "1 Gbps",
 			Downlink: "1 Gbps",
@@ -734,7 +701,7 @@ func TestApplyPccRules(t *testing.T) {
 				}
 			}
 			for id, expPcc := range tc.expectedPCCRules {
-				require.Equal(t, expPcc.PccRule, smctx.PCCRules[id].PccRule)
+				require.Equal(t, expPcc.Pcf_SMPolCtrl_PccRule, smctx.PCCRules[id].Pcf_SMPolCtrl_PccRule)
 			}
 			if tc.expectedQosDatas != nil {
 				require.Equal(t, tc.expectedQosDatas, smctx.QosDatas)

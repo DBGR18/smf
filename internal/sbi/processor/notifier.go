@@ -8,7 +8,7 @@ import (
 
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
-	"github.com/free5gc/openapi/smf/EventExposure"
+	"github.com/free5gc/openapi/smf/EvtExpos"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/internal/logger"
 	"github.com/free5gc/util/metrics/sbi"
@@ -16,7 +16,7 @@ import (
 
 func (p *Processor) HandleChargingNotification(
 	c *gin.Context,
-	chargingNotifyRequest models.ChargingNotifyRequest,
+	chargingNotifyRequest models.Chf_ConvCharging_ChargingNotifyRequest,
 	smContextRef string,
 ) {
 	logger.ChargingLog.Info("Handle Charging Notification")
@@ -33,7 +33,7 @@ func (p *Processor) HandleChargingNotification(
 // While receive Charging Notification from CHF, SMF will send Charging Information to CHF and update UPF
 // The Charging Notification will be sent when CHF found the changes of the quota file.
 func (p *Processor) chargingNotificationProcedure(
-	req models.ChargingNotifyRequest, smContextRef string,
+	req models.Chf_ConvCharging_ChargingNotifyRequest, smContextRef string,
 ) *models.ProblemDetails {
 	if smContext := smf_context.GetSMContextByRef(smContextRef); smContext != nil {
 		smContext.SMLock.Lock()
@@ -71,7 +71,7 @@ func (p *Processor) chargingNotificationProcedure(
 				logger.ChargingLog.Warnf("Cound not find upf %s", upfId)
 				continue
 			}
-			QueryReport(smContext, upf, urrList, models.ChfConvergedChargingTriggerType_FORCED_REAUTHORISATION)
+			QueryReport(smContext, upf, urrList, models.Chf_ConvCharging_TriggerType_FORCED_REAUTHORISATION)
 		}
 		p.ReportUsageAndUpdateQuota(smContext)
 	} else {
@@ -84,7 +84,7 @@ func (p *Processor) chargingNotificationProcedure(
 
 func (p *Processor) HandleSMPolicyUpdateNotify(
 	c *gin.Context,
-	request models.SmPolicyNotification,
+	request models.Pcf_SMPolCtrl_SmPolicyNotification,
 	smContextRef string,
 ) {
 	logger.PduSessLog.Infoln("In HandleSMPolicyUpdateNotify")
@@ -137,16 +137,16 @@ func (p *Processor) HandleSMPolicyUpdateNotify(
 }
 
 func SendUpPathChgEventExposureNotification(
-	uri string, notification *models.NsmfEventExposureNotification,
+	uri string, notification *models.Smf_EvtExpos_NsmfEventExposureNotification,
 ) {
-	configuration := EventExposure.NewConfiguration()
-	client := EventExposure.NewAPIClient(configuration)
-	request := &EventExposure.CreateIndividualSubcriptionMyNotificationPostRequest{
-		NsmfEventExposureNotification: notification,
+	configuration := EvtExpos.NewConfiguration()
+	client := EvtExpos.NewAPIClient(configuration)
+	request := &EvtExpos.CreateIndividualSubcriptionMyNotificationRequest{
+		RequestBody: notification,
 	}
 
 	ctx, pd, err := smf_context.GetSelf().GetTokenCtx(
-		models.ServiceName("nnef-callback"), models.NrfNfManagementNfType_NEF)
+		models.Nrf_NFMgmt_ServiceName("nnef-callback"), models.Nrf_NFMgmt_NFType_NEF)
 	if err != nil {
 		logger.PduSessLog.Warnf("SMF Event Exposure Notification get token failed: %+v", pd)
 		return
@@ -154,7 +154,7 @@ func SendUpPathChgEventExposureNotification(
 
 	_, err = client.
 		SubscriptionsCollectionApi.
-		CreateIndividualSubcriptionMyNotificationPost(ctx, uri, request)
+		CreateIndividualSubcriptionMyNotification(ctx, uri, request)
 
 	switch err := err.(type) {
 	case openapi.GenericOpenAPIError:

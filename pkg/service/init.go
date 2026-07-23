@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/free5gc/openapi"
-	"github.com/free5gc/openapi/nrf/NFManagement"
+	"github.com/free5gc/openapi/nrf/NFMgmt"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/internal/logger"
 	"github.com/free5gc/smf/internal/sbi"
@@ -241,7 +241,7 @@ func (a *SmfApp) terminateProcedure() {
 		switch apiErr := err.(type) {
 		case openapi.GenericOpenAPIError:
 			switch errModel := apiErr.Model().(type) {
-			case NFManagement.DeregisterNFInstanceError:
+			case NFMgmt.DeregisterNFInstanceError:
 				pd := &errModel.ProblemDetails
 				logger.MainLog.Errorf("Deregister NF instance Failed Problem[%+v]", pd)
 			case error:

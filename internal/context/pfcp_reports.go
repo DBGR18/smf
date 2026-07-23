@@ -11,7 +11,7 @@ func (smContext *SMContext) HandleReports(
 	usageReportRequest []*pfcp.UsageReportPFCPSessionReportRequest,
 	usageReportModification []*pfcp.UsageReportPFCPSessionModificationResponse,
 	usageReportDeletion []*pfcp.UsageReportPFCPSessionDeletionResponse,
-	nodeId pfcpType.NodeID, reportTpye models.ChfConvergedChargingTriggerType,
+	nodeId pfcpType.NodeID, reportTpye models.Chf_ConvCharging_TriggerType,
 ) {
 	var usageReport UsageReport
 	upf := RetrieveUPFNodeByNodeID(nodeId)
@@ -94,23 +94,23 @@ func (smContext *SMContext) HandleReports(
 	}
 }
 
-func identityTriggerType(usarTrigger *pfcpType.UsageReportTrigger) models.ChfConvergedChargingTriggerType {
-	var trigger models.ChfConvergedChargingTriggerType
+func identityTriggerType(usarTrigger *pfcpType.UsageReportTrigger) models.Chf_ConvCharging_TriggerType {
+	var trigger models.Chf_ConvCharging_TriggerType
 
 	switch {
 	case usarTrigger.Volth:
-		trigger = models.ChfConvergedChargingTriggerType_QUOTA_THRESHOLD
+		trigger = models.Chf_ConvCharging_TriggerType_QUOTA_THRESHOLD
 	case usarTrigger.Volqu:
-		trigger = models.ChfConvergedChargingTriggerType_QUOTA_EXHAUSTED
+		trigger = models.Chf_ConvCharging_TriggerType_QUOTA_EXHAUSTED
 	case usarTrigger.Quvti:
-		trigger = models.ChfConvergedChargingTriggerType_VALIDITY_TIME
+		trigger = models.Chf_ConvCharging_TriggerType_VALIDITY_TIME
 	case usarTrigger.Start:
-		trigger = models.ChfConvergedChargingTriggerType_START_OF_SERVICE_DATA_FLOW
+		trigger = models.Chf_ConvCharging_TriggerType_START_OF_SERVICE_DATA_FLOW
 	case usarTrigger.Immer:
 		logger.PduSessLog.Trace("Reports Query by SMF, trigger should be filled later")
 		return ""
 	case usarTrigger.Termr:
-		trigger = models.ChfConvergedChargingTriggerType_FINAL
+		trigger = models.Chf_ConvCharging_TriggerType_FINAL
 	default:
 		logger.PduSessLog.Trace("Report is not a charging trigger")
 		return ""

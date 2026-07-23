@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 
+	"github.com/free5gc/openapi/mediatype/multipart"
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/pfcp"
 	"github.com/free5gc/pfcp/pfcpType"
@@ -145,7 +146,7 @@ func HandlePfcpSessionReportRequest(msg *pfcpUdp.Message) {
 		return
 	}
 
-	if smContext.UpCnxState == models.UpCnxState_DEACTIVATED {
+	if smContext.UpCnxState == models.Smf_PDUSess_UpCnxState_DEACTIVATED {
 		if req.ReportType.Dldr {
 			if req.DownlinkDataReport == nil {
 				logger.PfcpLog.Errorf("PFCP Session Report Request missing DownlinkDataReport with DLDR flag")
@@ -160,16 +161,18 @@ func HandlePfcpSessionReportRequest(msg *pfcpUdp.Message) {
 					"PFCP Session Report Request DownlinkDataServiceInformation handling is not implemented")
 			}
 
-			n1n2Request := models.N1N2MessageTransferRequest{}
+			n1n2Request := models.N1N2MessageTransferRequestBody{}
 
 			// TS 23.502 4.2.3.3 3a. Send Namf_Communication_N1N2MessageTransfer Request, SMF->AMF
 			if n2SmBuf, err := smf_context.BuildPDUSessionResourceSetupRequestTransfer(smContext); err != nil {
 				logger.PduSessLog.Errorln("Build PDUSessionResourceSetupRequestTransfer failed:", err)
 			} else {
-				n1n2Request.BinaryDataN2Information = n2SmBuf
+				n1n2Request.BinaryDataN2Information = &multipart.RelatedContent{
+					ContentID: "N2SmInformation", Content: n2SmBuf,
+				}
 			}
 
-			n1n2Request.JsonData = &models.N1N2MessageTransferReqData{
+			n1n2Request.JsonData = &models.Amf_Comm_N1N2MessageTransferReqData{
 				PduSessionId: smContext.PDUSessionID,
 				// Temporarily assign SMF itself,
 				// TODO: TS 23.502 4.2.3.3 5. Namf_Communication_N1N2TransferFailureNotification
@@ -177,12 +180,12 @@ func HandlePfcpSessionReportRequest(msg *pfcpUdp.Message) {
 					smf_context.GetSelf().URIScheme,
 					smf_context.GetSelf().RegisterIPv4,
 					smf_context.GetSelf().SBIPort),
-				N2InfoContainer: &models.N2InfoContainer{
-					N2InformationClass: models.N2InformationClass_SM,
-					SmInfo: &models.N2SmInformation{
+				N2InfoContainer: &models.Amf_Comm_N2InfoContainer{
+					N2InformationClass: models.Amf_Comm_N2InformationClass_SM,
+					SmInfo: &models.Amf_Comm_N2SmInformation{
 						PduSessionId: smContext.PDUSessionID,
-						N2InfoContent: &models.N2InfoContent{
-							NgapIeType: models.AmfCommunicationNgapIeType_PDU_RES_SETUP_REQ,
+						N2InfoContent: &models.Amf_Comm_N2InfoContent{
+							NgapIeType: models.Amf_Comm_NgapIeType_PDU_RES_SETUP_REQ,
 							NgapData: &models.RefToBinaryData{
 								ContentId: "N2SmInformation",
 							},
@@ -192,7 +195,8 @@ func HandlePfcpSessionReportRequest(msg *pfcpUdp.Message) {
 				},
 			}
 
-			ctx, _, errToken := smf_context.GetSelf().GetTokenCtx(models.ServiceName_NAMF_COMM, models.NrfNfManagementNfType_AMF)
+			ctx, _, errToken := smf_context.GetSelf().GetTokenCtx(
+				models.Nrf_NFMgmt_ServiceName_NAMF_COMM, models.Nrf_NFMgmt_NFType_AMF)
 			if errToken != nil {
 				logger.PfcpLog.Warnf("Get NAMF_COMM context failed: %s", errToken)
 				return
@@ -204,10 +208,10 @@ func HandlePfcpSessionReportRequest(msg *pfcpUdp.Message) {
 				return
 			}
 
-			if rspData.Cause == models.N1N2MessageTransferCause_ATTEMPTING_TO_REACH_UE {
+			if rspData.Cause == models.Amf_Comm_N1N2MessageTransferCause_ATTEMPTING_TO_REACH_UE {
 				logger.PfcpLog.Infof("Receive %v, AMF is able to page the UE", rspData.Cause)
 			}
-			if rspData.Cause == models.N1N2MessageTransferCause_UE_NOT_RESPONDING {
+			if rspData.Cause == models.Amf_Comm_N1N2MessageTransferCause_UE_NOT_RESPONDING {
 				logger.PfcpLog.Warnf("%v", rspData.Cause)
 				// TODO: TS 23.502 4.2.3.3 3c. Failure indication
 			}

@@ -93,9 +93,9 @@ func (p *Processor) EstablishPSA2(smContext *context.SMContext) {
 			}
 
 			// According to 32.255 5.2.2.7, Addition of additional PDU Session Anchor is a charging event
-			p.UpdateChargingSession(smContext, chgUrrList, models.ChfConvergedChargingTrigger{
-				TriggerType:     models.ChfConvergedChargingTriggerType_ADDITION_OF_UPF,
-				TriggerCategory: models.TriggerCategory_IMMEDIATE_REPORT,
+			p.UpdateChargingSession(smContext, chgUrrList, models.Chf_ConvCharging_Trigger{
+				TriggerType:     models.Chf_ConvCharging_TriggerType_ADDITION_OF_UPF,
+				TriggerCategory: models.Chf_ConvCharging_TriggerCategory_IMMEDIATE_REPORT,
 			})
 
 			lastNode := node.Prev()
@@ -166,8 +166,9 @@ func EstablishULCL(smContext *context.SMContext) error {
 			// For online/offline charging, create new URR for PSA2 anchor
 			if len(pduLevelChargingUrrs) > 0 {
 				urrId := pduLevelChargingUrrs[0].URRID
-				if smContext.ChargingInfo[urrId].ChargingMethod == models.QuotaManagementIndicator_ONLINE_CHARGING ||
-					smContext.ChargingInfo[urrId].ChargingMethod == models.QuotaManagementIndicator_OFFLINE_CHARGING {
+				chargingMethod := smContext.ChargingInfo[urrId].ChargingMethod
+				if chargingMethod == models.Chf_ConvCharging_QuotaManagementIndicator_ONLINE_CHARGING ||
+					chargingMethod == models.Chf_ConvCharging_QuotaManagementIndicator_OFFLINE_CHARGING {
 					var urr *context.URR
 					currentUUID := curDPNode.UPF.UUID()
 					newChgInfo := &context.ChargingInfo{
@@ -182,7 +183,7 @@ func EstablishULCL(smContext *context.SMContext) error {
 						return err
 					}
 
-					if smContext.ChargingInfo[urrId].ChargingMethod == models.QuotaManagementIndicator_ONLINE_CHARGING {
+					if chargingMethod == models.Chf_ConvCharging_QuotaManagementIndicator_ONLINE_CHARGING {
 						if newURR, err2 := curDPNode.UPF.AddURR(uint32(newUrrId),
 							context.NewMeasureInformation(false, false),
 							context.SetStartOfSDFTrigger()); err2 != nil {
@@ -190,7 +191,7 @@ func EstablishULCL(smContext *context.SMContext) error {
 							return fmt.Errorf("new URR failed for up node [%s]", currentUUID)
 						} else {
 							urr = newURR
-							newChgInfo.ChargingMethod = models.QuotaManagementIndicator_ONLINE_CHARGING
+							newChgInfo.ChargingMethod = models.Chf_ConvCharging_QuotaManagementIndicator_ONLINE_CHARGING
 						}
 					} else {
 						if newURR, err2 := curDPNode.UPF.AddURR(uint32(newUrrId),
@@ -200,7 +201,7 @@ func EstablishULCL(smContext *context.SMContext) error {
 							return fmt.Errorf("new URR failed for up node [%s]", currentUUID)
 						} else {
 							urr = newURR
-							newChgInfo.ChargingMethod = models.QuotaManagementIndicator_OFFLINE_CHARGING
+							newChgInfo.ChargingMethod = models.Chf_ConvCharging_QuotaManagementIndicator_OFFLINE_CHARGING
 						}
 					}
 

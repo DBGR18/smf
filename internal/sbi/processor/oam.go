@@ -20,8 +20,8 @@ type PDUSessionInfo struct {
 	Sd           string
 	AnType       models.AccessType
 	PDUAddress   string
-	SessionRule  models.SessionRule
-	UpCnxState   models.UpCnxState
+	SessionRule  models.Pcf_SMPolCtrl_SessionRule
+	UpCnxState   models.Smf_PDUSess_UpCnxState
 	Tunnel       context.UPTunnel
 }
 

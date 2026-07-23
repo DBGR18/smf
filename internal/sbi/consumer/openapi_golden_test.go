@@ -1,21 +1,22 @@
 package consumer_test
 
 import (
-	"bytes"
+	"mime"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/free5gc/openapi"
+	"github.com/free5gc/openapi/mediatype/multipart"
 	"github.com/free5gc/openapi/models"
 )
 
 const (
-	testN1ContentID   = "GSM_NAS"
-	testN2ContentID   = "N2SmInformation"
-	jsonMediaType     = "application/json"
-	multipartCTPrefix = `multipart/related; boundary="`
+	testN1ContentID    = "GSM_NAS"
+	testN2ContentID    = "N2SmInformation"
+	jsonMediaType      = "application/json"
+	multipartMediaType = "multipart/related"
 )
 
 // goldenN1N2ReqDataJSON is the golden JSON encoding of newTestN1N2MessageTransferReqData.
@@ -29,19 +30,19 @@ const goldenN1N2ReqDataJSON = `{"n1MessageContainer":{"n1MessageClass":"SM",` +
 // newTestN1N2MessageTransferReqData mirrors how the SMF fills the JsonData of
 // N1N2MessageTransfer in sendPDUSessionEstablishmentAccept
 // (internal/sbi/processor/datapath.go).
-func newTestN1N2MessageTransferReqData() *models.N1N2MessageTransferReqData {
-	return &models.N1N2MessageTransferReqData{
+func newTestN1N2MessageTransferReqData() *models.Amf_Comm_N1N2MessageTransferReqData {
+	return &models.Amf_Comm_N1N2MessageTransferReqData{
 		PduSessionId: 10,
-		N1MessageContainer: &models.N1MessageContainer{
+		N1MessageContainer: &models.Amf_Comm_N1MessageContainer{
 			N1MessageClass:   "SM",
 			N1MessageContent: &models.RefToBinaryData{ContentId: testN1ContentID},
 		},
-		N2InfoContainer: &models.N2InfoContainer{
-			N2InformationClass: models.N2InformationClass_SM,
-			SmInfo: &models.N2SmInformation{
+		N2InfoContainer: &models.Amf_Comm_N2InfoContainer{
+			N2InformationClass: models.Amf_Comm_N2InformationClass_SM,
+			SmInfo: &models.Amf_Comm_N2SmInformation{
 				PduSessionId: 10,
-				N2InfoContent: &models.N2InfoContent{
-					NgapIeType: models.AmfCommunicationNgapIeType_PDU_RES_SETUP_REQ,
+				N2InfoContent: &models.Amf_Comm_N2InfoContent{
+					NgapIeType: models.Amf_Comm_NgapIeType_PDU_RES_SETUP_REQ,
 					NgapData: &models.RefToBinaryData{
 						ContentId: testN2ContentID,
 					},
@@ -52,43 +53,53 @@ func newTestN1N2MessageTransferReqData() *models.N1N2MessageTransferReqData {
 	}
 }
 
-// extractBoundary pulls the random boundary out of a MultipartEncode content type.
+// extractBoundary pulls the random boundary out of a Serialize content type.
+//
+// The boundary must be parsed, not sliced off a fixed prefix: openapi builds
+// the header with mime.FormatMediaType, which only quotes the value when it is
+// not a valid HTTP token. openapi's generateBoundary draws from a charset that
+// includes both token and non-token characters ("(),/:=?"), so the header is
+// usually `boundary="..."` but is `boundary=...` whenever the random boundary
+// happens to contain token characters only — a few percent of runs.
 func extractBoundary(t *testing.T, contentType string) string {
 	t.Helper()
-	require.True(t, strings.HasPrefix(contentType, multipartCTPrefix))
-	require.True(t, strings.HasSuffix(contentType, `"`))
-	return contentType[len(multipartCTPrefix) : len(contentType)-1]
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	require.NoError(t, err)
+	require.Equal(t, multipartMediaType, mediaType)
+	boundary := params["boundary"]
+	require.NotEmpty(t, boundary)
+	return boundary
 }
 
 func TestGoldenN1N2MessageTransferReqDataJSON(t *testing.T) {
-	b, err := openapi.Serialize(newTestN1N2MessageTransferReqData(), jsonMediaType)
+	_, b, err := openapi.Serialize(newTestN1N2MessageTransferReqData(), jsonMediaType)
 	require.NoError(t, err)
 
 	// double-encode guard
-	b2, err := openapi.Serialize(newTestN1N2MessageTransferReqData(), jsonMediaType)
+	_, b2, err := openapi.Serialize(newTestN1N2MessageTransferReqData(), jsonMediaType)
 	require.NoError(t, err)
 	require.Equal(t, b, b2)
 
 	require.Equal(t, goldenN1N2ReqDataJSON, string(b))
 
 	// decode-back check
-	var decoded models.N1N2MessageTransferReqData
+	var decoded models.Amf_Comm_N1N2MessageTransferReqData
 	require.NoError(t, openapi.Deserialize(&decoded, []byte(goldenN1N2ReqDataJSON), jsonMediaType))
 	require.Equal(t, *newTestN1N2MessageTransferReqData(), decoded)
 }
 
 func TestGoldenN1N2MessageTransferRequestMultipart(t *testing.T) {
-	newRequest := func() models.N1N2MessageTransferRequest {
-		return models.N1N2MessageTransferRequest{
+	newRequest := func() models.N1N2MessageTransferRequestBody {
+		return models.N1N2MessageTransferRequestBody{
 			JsonData: newTestN1N2MessageTransferReqData(),
 			// golden bytes of BuildGSMPDUSessionEstablishmentReject
 			// (internal/context/gsm_build_internal_test.go)
-			BinaryDataN1Message: []byte{0x2e, 0x0a, 0x01, 0xc3, 0x26},
+			BinaryDataN1Message: &multipart.RelatedContent{ContentID: "GSM_NAS", Content: []byte{0x2e, 0x0a, 0x01, 0xc3, 0x26}},
 			// golden bytes of BuildPDUSessionResourceModifyConfirmTransfer
 			// (internal/context/ngap_build_internal_test.go)
-			BinaryDataN2Information: []byte{
+			BinaryDataN2Information: &multipart.RelatedContent{ContentID: "N2SmInformation", Content: []byte{
 				0x00, 0x00, 0x40, 0x3e, 0xc0, 0xa8, 0xb3, 0x01, 0x00, 0x00, 0x01, 0x03,
-			},
+			}},
 		}
 	}
 
@@ -112,26 +123,24 @@ func TestGoldenN1N2MessageTransferRequestMultipart(t *testing.T) {
 	}, "\r\n")
 
 	req := newRequest()
-	buf := &bytes.Buffer{}
-	contentType, err := openapi.MultipartEncode(&req, buf)
+	contentType, body, err := openapi.Serialize(&req, multipartMediaType)
 	require.NoError(t, err)
 
 	// the multipart boundary is random: normalize it before comparing
 	boundary := extractBoundary(t, contentType)
-	norm := strings.ReplaceAll(buf.String(), boundary, "BOUNDARY")
+	norm := strings.ReplaceAll(string(body), boundary, "BOUNDARY")
 
 	// double-encode guard (on normalized output: only the boundary may differ)
 	req2 := newRequest()
-	buf2 := &bytes.Buffer{}
-	contentType2, err := openapi.MultipartEncode(&req2, buf2)
+	contentType2, body2, err := openapi.Serialize(&req2, multipartMediaType)
 	require.NoError(t, err)
 	boundary2 := extractBoundary(t, contentType2)
-	require.Equal(t, norm, strings.ReplaceAll(buf2.String(), boundary2, "BOUNDARY"))
+	require.Equal(t, norm, strings.ReplaceAll(string(body2), boundary2, "BOUNDARY"))
 
 	require.Equal(t, golden, norm)
 
 	// decode-back: same core path as the server side's multipart binding
-	var decoded models.N1N2MessageTransferRequest
-	require.NoError(t, openapi.Deserialize(&decoded, buf.Bytes(), contentType))
+	var decoded models.N1N2MessageTransferRequestBody
+	require.NoError(t, openapi.Deserialize(&decoded, body, contentType))
 	require.Equal(t, req, decoded)
 }

@@ -17,6 +17,7 @@ import (
 	nasie "github.com/free5gc/nas/ie"
 	"github.com/free5gc/nas/message"
 	"github.com/free5gc/openapi"
+	"github.com/free5gc/openapi/mediatype/multipart"
 	"github.com/free5gc/openapi/models"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/internal/pfcp"
@@ -125,9 +126,9 @@ func initConfig() {
 }
 
 func initDiscUDMStubNRF() {
-	searchResult := &models.SearchResult{
+	searchResult := &models.Nrf_NFDisc_SearchResult{
 		ValidityPeriod: 100,
-		NfInstances: []models.NrfNfDiscoveryNfProfile{
+		NfInstances: []models.Nrf_NFDisc_NFProfile{
 			{
 				NfInstanceId: "smf-unit-testing",
 				NfType:       "UDM",
@@ -141,11 +142,11 @@ func initDiscUDMStubNRF() {
 				Ipv4Addresses: []string{
 					"127.0.0.3",
 				},
-				NfServices: []models.NrfNfDiscoveryNfService{
+				NfServices: []models.Nrf_NFDisc_NFService{
 					{
 						ServiceInstanceId: "0",
 						ServiceName:       "nudm-sdm",
-						Versions: []models.NfServiceVersion{
+						Versions: []models.Nrf_NFMgmt_NFServiceVersion{
 							{
 								ApiVersionInUri: "v1",
 								ApiFullVersion:  "1.0.0",
@@ -153,7 +154,7 @@ func initDiscUDMStubNRF() {
 						},
 						Scheme:          "http",
 						NfServiceStatus: "REGISTERED",
-						IpEndPoints: []models.IpEndPoint{
+						IpEndPoints: []models.Nrf_NFMgmt_IpEndPoint{
 							{
 								Ipv4Address: "127.0.0.3",
 								Transport:   "TCP",
@@ -176,9 +177,9 @@ func initDiscUDMStubNRF() {
 }
 
 func initDiscPCFStubNRF() {
-	searchResult := &models.SearchResult{
+	searchResult := &models.Nrf_NFDisc_SearchResult{
 		ValidityPeriod: 100,
-		NfInstances: []models.NrfNfDiscoveryNfProfile{
+		NfInstances: []models.Nrf_NFDisc_NFProfile{
 			{
 				NfInstanceId: "smf-unit-testing",
 				NfType:       "PCF",
@@ -192,17 +193,17 @@ func initDiscPCFStubNRF() {
 				Ipv4Addresses: []string{
 					"127.0.0.7",
 				},
-				PcfInfo: &models.PcfInfo{
+				PcfInfo: &models.Nrf_NFMgmt_PcfInfo{
 					DnnList: []string{
 						"free5gc",
 						"internet",
 					},
 				},
-				NfServices: []models.NrfNfDiscoveryNfService{
+				NfServices: []models.Nrf_NFDisc_NFService{
 					{
 						ServiceInstanceId: "1",
 						ServiceName:       "npcf-smpolicycontrol",
-						Versions: []models.NfServiceVersion{
+						Versions: []models.Nrf_NFMgmt_NFServiceVersion{
 							{
 								ApiVersionInUri: "v1",
 								ApiFullVersion:  "1.0.0",
@@ -210,7 +211,7 @@ func initDiscPCFStubNRF() {
 						},
 						Scheme:          "http",
 						NfServiceStatus: "REGISTERED",
-						IpEndPoints: []models.IpEndPoint{
+						IpEndPoints: []models.Nrf_NFMgmt_IpEndPoint{
 							{
 								Ipv4Address: "127.0.0.7",
 								Transport:   "TCP",
@@ -233,21 +234,21 @@ func initDiscPCFStubNRF() {
 }
 
 func initGetSMDataStubUDM() {
-	SMSubscriptionData := []models.SessionManagementSubscriptionData{
+	SMSubscriptionData := []models.Udm_SDM_SessionManagementSubscriptionData{
 		{
 			SingleNssai: &models.Snssai{
 				Sst: 1,
 				Sd:  "112232",
 			},
-			DnnConfigurations: map[string]models.DnnConfiguration{
+			DnnConfigurations: map[string]models.Udm_SDM_DnnConfiguration{
 				"internet": {
-					PduSessionTypes: &models.PduSessionTypes{
+					PduSessionTypes: &models.Udm_SDM_PduSessionTypes{
 						DefaultSessionType: "IPV4",
 						AllowedSessionTypes: []models.PduSessionType{
 							"IPV4",
 						},
 					},
-					SscModes: &models.SscModes{
+					SscModes: &models.Udm_SDM_SscModes{
 						DefaultSscMode: "SSC_MODE_1",
 						AllowedSscModes: []models.SscMode{
 							"SSC_MODE_1",
@@ -279,14 +280,14 @@ func initGetSMDataStubUDM() {
 }
 
 func initSMPoliciesPostStubPCF() {
-	smPolicyDecision := models.SmPolicyDecision{
-		SessRules: map[string]*models.SessionRule{
+	smPolicyDecision := models.Pcf_SMPolCtrl_SmPolicyDecision{
+		SessRules: map[string]*models.Pcf_SMPolCtrl_SessionRule{
 			"SessRuleId-10": {
 				AuthSessAmbr: &models.Ambr{
 					Uplink:   "1000 Kbps",
 					Downlink: "1000 Kbps",
 				},
-				AuthDefQos: &models.AuthorizedDefaultQos{
+				AuthDefQos: &models.Pcf_SMPolCtrl_AuthorizedDefaultQos{
 					Var5qi: 9,
 					Arp: &models.Arp{
 						PriorityLevel: 8,
@@ -296,7 +297,7 @@ func initSMPoliciesPostStubPCF() {
 				SessRuleId: "SessRuleId-10",
 			},
 		},
-		PolicyCtrlReqTriggers: []models.PolicyControlRequestTrigger{
+		PolicyCtrlReqTriggers: []models.Pcf_SMPolCtrl_PolicyControlRequestTrigger{
 			"PLMN_CH", "RES_MO_RE", "AC_TY_CH", "UE_IP_CH", "PS_DA_OFF",
 			"DEF_QOS_CH", "SE_AMBR_CH", "QOS_NOTIF", "RAT_TY_CH",
 		},
@@ -312,9 +313,9 @@ func initSMPoliciesPostStubPCF() {
 }
 
 func initDiscAMFStubNRF() {
-	searchResult := &models.SearchResult{
+	searchResult := &models.Nrf_NFDisc_SearchResult{
 		ValidityPeriod: 100,
-		NfInstances: []models.NrfNfDiscoveryNfProfile{
+		NfInstances: []models.Nrf_NFDisc_NFProfile{
 			{
 				NfInstanceId: "smf-unit-testing",
 				NfType:       "AMF",
@@ -328,15 +329,15 @@ func initDiscAMFStubNRF() {
 				Ipv4Addresses: []string{
 					"127.0.0.18",
 				},
-				AmfInfo: &models.NrfNfManagementAmfInfo{
+				AmfInfo: &models.Nrf_NFMgmt_AmfInfo{
 					AmfSetId:    "3f8",
 					AmfRegionId: "ca",
 				},
-				NfServices: []models.NrfNfDiscoveryNfService{
+				NfServices: []models.Nrf_NFDisc_NFService{
 					{
 						ServiceInstanceId: "0",
 						ServiceName:       "namf-comm",
-						Versions: []models.NfServiceVersion{
+						Versions: []models.Nrf_NFMgmt_NFServiceVersion{
 							{
 								ApiVersionInUri: "v1",
 								ApiFullVersion:  "1.0.0",
@@ -344,7 +345,7 @@ func initDiscAMFStubNRF() {
 						},
 						Scheme:          "http",
 						NfServiceStatus: "REGISTERED",
-						IpEndPoints: []models.IpEndPoint{
+						IpEndPoints: []models.Nrf_NFMgmt_IpEndPoint{
 							{
 								Ipv4Address: "127.0.0.18",
 								Transport:   "TCP",
@@ -420,8 +421,7 @@ func buildPDUSessionEstablishmentReject(pduSessID uint8, pti uint8, cause uint8)
 
 func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 	// Activate Gock
-	openapi.InterceptH2CClient()
-	defer openapi.RestoreH2CClient()
+	openapi.InterceptInnerHttp2Client(t, false)
 	initConfig()
 	initStubPFCP()
 
@@ -433,7 +433,7 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 
 	testCases := []struct {
 		initFuncs       []func()
-		request         models.PostSmContextsRequest
+		request         models.PostSmContextsRequestBody
 		paramStr        string
 		resultStr       string
 		responseBody    any
@@ -441,17 +441,19 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 	}{
 		{
 			initFuncs: []func(){initDiscUDMStubNRF, initDiscPCFStubNRF, initSMPoliciesPostStubPCF, initDiscAMFStubNRF},
-			request: models.PostSmContextsRequest{
-				BinaryDataN1SmMessage: buildPDUSessionModificationRequest(10, 1),
+			request: models.PostSmContextsRequestBody{
+				BinaryDataN1SmMessage: &multipart.RelatedContent{
+					ContentID: "GSM_NAS", Content: buildPDUSessionModificationRequest(10, 1),
+				},
 			},
 			paramStr:     "input wrong GSM Message type\n",
 			resultStr:    "PDUSessionSMContextCreate should fail due to wrong GSM type\n",
-			responseBody: &models.PostSmContextsError{},
+			responseBody: &models.PostSmContextsResponse403{},
 			expectedHTTPRsp: &httpwrapper.Response{
 				Header: nil,
 				Status: http.StatusForbidden,
-				Body: models.PostSmContextsError{
-					JsonData: &models.SmContextCreateError{
+				Body: models.PostSmContextsResponse403{
+					JsonData: &models.Smf_PDUSess_SmContextCreateError{
 						Error: &PDUSession_errors.N1SmError,
 					},
 				},
@@ -462,8 +464,8 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 				initDiscUDMStubNRF, initDiscPCFStubNRF,
 				initGetSMDataStubUDM, initSMPoliciesPostStubPCF, initDiscAMFStubNRF,
 			},
-			request: models.PostSmContextsRequest{
-				JsonData: &models.SmfPduSessionSmContextCreateData{
+			request: models.PostSmContextsRequestBody{
+				JsonData: &models.Smf_PDUSess_SmContextCreateData{
 					Supi:         "imsi-208930000007487",
 					Pei:          "imeisv-1110000000000000",
 					Gpsi:         "msisdn-0900000000",
@@ -487,17 +489,19 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 						Mnc: "93",
 					},
 				},
-				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, 2, nasie.PDUSessType_IPv6),
+				BinaryDataN1SmMessage: &multipart.RelatedContent{
+					ContentID: "GSM_NAS", Content: buildPDUSessionEstablishmentRequest(10, 2, nasie.PDUSessType_IPv6),
+				},
 			},
 			paramStr:     "try request the IPv6 PDU session\n",
 			resultStr:    "Reject IPv6 PDU Session and respond error\n",
-			responseBody: &models.PostSmContextsError{},
+			responseBody: &models.PostSmContextsResponse403{},
 			expectedHTTPRsp: &httpwrapper.Response{
 				Header: nil,
 				Status: http.StatusForbidden,
-				Body: models.PostSmContextsError{
-					JsonData: &models.SmContextCreateError{
-						Error: &models.SmfPduSessionExtProblemDetails{
+				Body: models.PostSmContextsResponse403{
+					JsonData: &models.Smf_PDUSess_SmContextCreateError{
+						Error: &models.Smf_PDUSess_ExtProblemDetails{
 							Title:  "Invalid N1 Message",
 							Status: http.StatusForbidden,
 							Detail: "N1 Message Error",
@@ -505,8 +509,8 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 						},
 						N1SmMsg: &models.RefToBinaryData{ContentId: "n1SmMsg"},
 					},
-					BinaryDataN1SmMessage: buildPDUSessionEstablishmentReject(
-						10, 2, nasie.Cause5GSM_PDUSessTypeIpv4OnlyAllowed),
+					BinaryDataN1SmMessage: &multipart.RelatedContent{ContentID: "GSM_NAS", Content: buildPDUSessionEstablishmentReject(
+						10, 2, nasie.Cause5GSM_PDUSessTypeIpv4OnlyAllowed)},
 				},
 			},
 		},
@@ -515,8 +519,8 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 				initDiscUDMStubNRF, initDiscPCFStubNRF,
 				initGetSMDataStubUDM, initSMPoliciesPostStubPCF, initDiscAMFStubNRF,
 			},
-			request: models.PostSmContextsRequest{
-				JsonData: &models.SmfPduSessionSmContextCreateData{
+			request: models.PostSmContextsRequestBody{
+				JsonData: &models.Smf_PDUSess_SmContextCreateData{
 					Supi:         "imsi-208930000007487",
 					Pei:          "imeisv-1110000000000000",
 					Gpsi:         "msisdn-0900000000",
@@ -540,7 +544,9 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 						Mnc: "93",
 					},
 				},
-				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, 3, nasie.PDUSessType_IPv4),
+				BinaryDataN1SmMessage: &multipart.RelatedContent{
+					ContentID: "GSM_NAS", Content: buildPDUSessionEstablishmentRequest(10, 3, nasie.PDUSessType_IPv4),
+				},
 			},
 			paramStr:     "input correct PostSmContexts Request\n",
 			resultStr:    "PDUSessionSMContextCreate should pass\n",
@@ -549,7 +555,7 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 				Header: nil,
 				Status: http.StatusCreated,
 				Body: models.PostSmContextsResponse201{
-					JsonData: &models.SmfPduSessionSmContextCreatedData{
+					JsonData: &models.Smf_PDUSess_SmContextCreatedData{
 						SNssai: &models.Snssai{
 							Sst: 1,
 							Sd:  "112232",
@@ -633,8 +639,7 @@ func TestHandlePDUSessionSMContextCreate(t *testing.T) {
 }
 
 func TestHandlePDUSessionSMContextCreate_InvalidDnnSnssaiInputs(t *testing.T) {
-	openapi.InterceptH2CClient()
-	defer openapi.RestoreH2CClient()
+	openapi.InterceptInnerHttp2Client(t, false)
 	initConfig()
 	initStubPFCP()
 
@@ -701,8 +706,8 @@ func TestHandlePDUSessionSMContextCreate_InvalidDnnSnssaiInputs(t *testing.T) {
 			httpRecorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(httpRecorder)
 
-			request := models.PostSmContextsRequest{
-				JsonData: &models.SmfPduSessionSmContextCreateData{
+			request := models.PostSmContextsRequestBody{
+				JsonData: &models.Smf_PDUSess_SmContextCreateData{
 					Supi:         "imsi-208930000007487",
 					Pei:          "imeisv-1110000000000000",
 					Gpsi:         "msisdn-0900000000",
@@ -723,7 +728,9 @@ func TestHandlePDUSessionSMContextCreate_InvalidDnnSnssaiInputs(t *testing.T) {
 						Mnc: "93",
 					},
 				},
-				BinaryDataN1SmMessage: buildPDUSessionEstablishmentRequest(10, tc.input.pti, nasie.PDUSessType_IPv4),
+				BinaryDataN1SmMessage: &multipart.RelatedContent{
+					ContentID: "GSM_NAS", Content: buildPDUSessionEstablishmentRequest(10, tc.input.pti, nasie.PDUSessType_IPv4),
+				},
 			}
 
 			processor.HandlePDUSessionSMContextCreate(c, request, nil)
@@ -737,7 +744,7 @@ func TestHandlePDUSessionSMContextCreate_InvalidDnnSnssaiInputs(t *testing.T) {
 			rawBytes, errReadAll := io.ReadAll(httpResp.Body)
 			require.NoError(t, errReadAll)
 
-			actual := models.PostSmContextsError{}
+			actual := models.PostSmContextsResponse403{}
 			err = openapi.Deserialize(&actual, rawBytes, httpResp.Header.Get("Content-Type"))
 			require.NoError(t, err)
 
@@ -749,7 +756,7 @@ func TestHandlePDUSessionSMContextCreate_InvalidDnnSnssaiInputs(t *testing.T) {
 			require.NotNil(t, actual.BinaryDataN1SmMessage)
 			require.Equal(t,
 				buildPDUSessionEstablishmentReject(10, 0, nasie.Cause5GSM_ReqRejected),
-				actual.BinaryDataN1SmMessage,
+				actual.BinaryDataN1SmMessage.Content,
 			)
 		})
 	}

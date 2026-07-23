@@ -11,9 +11,9 @@ import (
 
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
-	"github.com/free5gc/openapi/nrf/NFDiscovery"
-	"github.com/free5gc/openapi/nrf/NFManagement"
-	"github.com/free5gc/openapi/udm/SubscriberDataManagement"
+	"github.com/free5gc/openapi/nrf/NFDisc"
+	"github.com/free5gc/openapi/nrf/NFMgmt"
+	"github.com/free5gc/openapi/udm/SDM"
 	smf_context "github.com/free5gc/smf/internal/context"
 	"github.com/free5gc/smf/internal/logger"
 	sbi_metrics "github.com/free5gc/util/metrics/sbi"
@@ -25,11 +25,11 @@ type nnrfService struct {
 	NFManagementgMu sync.RWMutex
 	NFDiscoveryMu   sync.RWMutex
 
-	NFManagementClients map[string]*NFManagement.APIClient
-	NFDiscoveryClients  map[string]*NFDiscovery.APIClient
+	NFManagementClients map[string]*NFMgmt.APIClient
+	NFDiscoveryClients  map[string]*NFDisc.APIClient
 }
 
-func (s *nnrfService) getNFManagementClient(uri string) *NFManagement.APIClient {
+func (s *nnrfService) getNFManagementClient(uri string) *NFMgmt.APIClient {
 	if uri == "" {
 		return nil
 	}
@@ -40,10 +40,10 @@ func (s *nnrfService) getNFManagementClient(uri string) *NFManagement.APIClient 
 		return client
 	}
 
-	configuration := NFManagement.NewConfiguration()
+	configuration := NFMgmt.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	client = NFManagement.NewAPIClient(configuration)
+	client = NFMgmt.NewAPIClient(configuration)
 
 	s.NFManagementgMu.RUnlock()
 	s.NFManagementgMu.Lock()
@@ -52,7 +52,7 @@ func (s *nnrfService) getNFManagementClient(uri string) *NFManagement.APIClient 
 	return client
 }
 
-func (s *nnrfService) getNFDiscoveryClient(uri string) *NFDiscovery.APIClient {
+func (s *nnrfService) getNFDiscoveryClient(uri string) *NFDisc.APIClient {
 	if uri == "" {
 		return nil
 	}
@@ -63,10 +63,10 @@ func (s *nnrfService) getNFDiscoveryClient(uri string) *NFDiscovery.APIClient {
 		return client
 	}
 
-	configuration := NFDiscovery.NewConfiguration()
+	configuration := NFDisc.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	client = NFDiscovery.NewAPIClient(configuration)
+	client = NFDisc.NewAPIClient(configuration)
 
 	s.NFDiscoveryMu.RUnlock()
 	s.NFDiscoveryMu.Lock()
@@ -83,11 +83,11 @@ func (s *nnrfService) RegisterNFInstance(ctx context.Context) error {
 		return errors.Wrap(err, "RegisterNFInstance buildNfProfile()")
 	}
 
-	var nf models.NrfNfManagementNfProfile
-	var res *NFManagement.RegisterNFInstanceResponse
-	registerNFInstanceRequest := &NFManagement.RegisterNFInstanceRequest{
-		NfInstanceID:             &smfContext.NfInstanceID,
-		NrfNfManagementNfProfile: &nfProfile,
+	var nf models.Nrf_NFMgmt_NFProfile
+	var res *NFMgmt.RegisterNFInstanceResponse
+	registerNFInstanceRequest := &NFMgmt.RegisterNFInstanceRequest{
+		NfInstanceID: &smfContext.NfInstanceID,
+		RequestBody:  &nfProfile,
 	}
 
 	// Check data (Use RESTful PUT)
@@ -103,7 +103,9 @@ func (s *nnrfService) RegisterNFInstance(ctx context.Context) error {
 				time.Sleep(2 * time.Second)
 				continue
 			}
-			nf = res.NrfNfManagementNfProfile
+			if res.Nrf_NFMgmt_NFProfile != nil {
+				nf = *res.Nrf_NFMgmt_NFProfile
+			}
 
 			// http.StatusOK
 			if res.Location == "" {
@@ -115,9 +117,8 @@ func (s *nnrfService) RegisterNFInstance(ctx context.Context) error {
 				smfContext.NfInstanceID = resourceUri[strings.LastIndex(resourceUri, "/")+1:]
 
 				oauth2 := false
-				if nf.CustomInfo != nil {
-					v, ok := nf.CustomInfo["oauth2"].(bool)
-					if ok {
+				if customInfo, ok := nf.CustomInfo.(map[string]interface{}); ok {
+					if v, isBool := customInfo["oauth2"].(bool); isBool {
 						oauth2 = v
 						logger.MainLog.Infoln("OAuth2 setting receive from NRF:", oauth2)
 					}
@@ -136,7 +137,7 @@ func (s *nnrfService) RegisterNFInstance(ctx context.Context) error {
 }
 
 func (s *nnrfService) buildNfProfile(smfContext *smf_context.SMFContext) (
-	profile models.NrfNfManagementNfProfile, err error,
+	profile models.Nrf_NFMgmt_NFProfile, err error,
 ) {
 	smfProfile := smfContext.NfProfile
 
@@ -146,10 +147,10 @@ func (s *nnrfService) buildNfProfile(smfContext *smf_context.SMFContext) (
 	}
 
 	// set nfProfile
-	profile = models.NrfNfManagementNfProfile{
+	profile = models.Nrf_NFMgmt_NFProfile{
 		NfInstanceId:  smfContext.NfInstanceID,
-		NfType:        models.NrfNfManagementNfType_SMF,
-		NfStatus:      models.NrfNfManagementNfStatus_REGISTERED,
+		NfType:        models.Nrf_NFMgmt_NFType_SMF,
+		NfStatus:      models.Nrf_NFMgmt_NFStatus_REGISTERED,
 		Ipv4Addresses: []string{smfContext.RegisterIPv4},
 		NfServices:    *smfProfile.NFServices,
 		SmfInfo:       smfProfile.SMFInfo,
@@ -169,14 +170,14 @@ func (s *nnrfService) SendDeregisterNFInstance() (err error) {
 	logger.ConsumerLog.Infof("Send Deregister NFInstance")
 
 	smfContext := s.consumer.Context()
-	ctx, pd, err := smfContext.GetTokenCtx(models.ServiceName_NNRF_NFM, models.NrfNfManagementNfType_NRF)
+	ctx, pd, err := smfContext.GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_NFM, models.Nrf_NFMgmt_NFType_NRF)
 	if err != nil {
 		logger.ConsumerLog.Errorf("Get token context failed, problem details: %+v", pd)
 		return err
 	}
 
 	client := s.getNFManagementClient(smfContext.NrfUri)
-	request := &NFManagement.DeregisterNFInstanceRequest{
+	request := &NFMgmt.DeregisterNFInstanceRequest{
 		NfInstanceID: &smfContext.NfInstanceID,
 	}
 
@@ -187,9 +188,9 @@ func (s *nnrfService) SendDeregisterNFInstance() (err error) {
 
 func (s *nnrfService) SendSearchNFInstances(
 	nrfUri string,
-	targetNfType, requestNfType models.NrfNfManagementNfType,
-	param *NFDiscovery.SearchNFInstancesRequest,
-) (*models.SearchResult, error) {
+	targetNfType, requestNfType models.Nrf_NFMgmt_NFType,
+	param *NFDisc.SearchNFInstancesRequest,
+) (*models.Nrf_NFDisc_SearchResult, error) {
 	// Set client and set url
 	smfContext := s.consumer.Context()
 	client := s.getNFDiscoveryClient(smfContext.NrfUri)
@@ -198,7 +199,7 @@ func (s *nnrfService) SendSearchNFInstances(
 		return nil, openapi.ReportError("nrf not found")
 	}
 
-	ctx, _, err := smfContext.GetTokenCtx(models.ServiceName_NNRF_DISC, models.NrfNfManagementNfType_NRF)
+	ctx, _, err := smfContext.GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, models.Nrf_NFMgmt_NFType_NRF)
 	if err != nil {
 		return nil, err
 	}
@@ -208,16 +209,15 @@ func (s *nnrfService) SendSearchNFInstances(
 		logger.ConsumerLog.Errorf("SearchNFInstances failed: %+v", err)
 		return nil, err
 	}
-	result := res.SearchResult
-	return &result, err
+	return res.Nrf_NFDisc_SearchResult, err
 }
 
 func (s *nnrfService) NFDiscoveryUDM(ctx context.Context) (
-	result models.SearchResult, localErr error,
+	result models.Nrf_NFDisc_SearchResult, localErr error,
 ) {
-	targetNfType := models.NrfNfManagementNfType_UDM
-	requesterNfType := models.NrfNfManagementNfType_SMF
-	request := &NFDiscovery.SearchNFInstancesRequest{
+	targetNfType := models.Nrf_NFMgmt_NFType_UDM
+	requesterNfType := models.Nrf_NFMgmt_NFType_SMF
+	request := &NFDisc.SearchNFInstancesRequest{
 		TargetNfType:    &targetNfType,
 		RequesterNfType: &requesterNfType,
 	}
@@ -227,18 +227,18 @@ func (s *nnrfService) NFDiscoveryUDM(ctx context.Context) (
 	client := s.getNFDiscoveryClient(smfContext.NrfUri)
 	// Check data
 	res, localErr := client.NFInstancesStoreApi.SearchNFInstances(ctx, request)
-	if res != nil {
-		result = res.SearchResult
+	if res != nil && res.Nrf_NFDisc_SearchResult != nil {
+		result = *res.Nrf_NFDisc_SearchResult
 	}
 	return result, localErr
 }
 
 func (s *nnrfService) NFDiscoveryPCF(ctx context.Context) (
-	result models.SearchResult, localErr error,
+	result models.Nrf_NFDisc_SearchResult, localErr error,
 ) {
-	targetNfType := models.NrfNfManagementNfType_PCF
-	requesterNfType := models.NrfNfManagementNfType_SMF
-	request := &NFDiscovery.SearchNFInstancesRequest{
+	targetNfType := models.Nrf_NFMgmt_NFType_PCF
+	requesterNfType := models.Nrf_NFMgmt_NFType_SMF
+	request := &NFDisc.SearchNFInstancesRequest{
 		TargetNfType:    &targetNfType,
 		RequesterNfType: &requesterNfType,
 	}
@@ -248,18 +248,18 @@ func (s *nnrfService) NFDiscoveryPCF(ctx context.Context) (
 	client := s.getNFDiscoveryClient(smfContext.NrfUri)
 	// Check data
 	res, localErr := client.NFInstancesStoreApi.SearchNFInstances(ctx, request)
-	if res != nil {
-		result = res.SearchResult
+	if res != nil && res.Nrf_NFDisc_SearchResult != nil {
+		result = *res.Nrf_NFDisc_SearchResult
 	}
 	return result, localErr
 }
 
 func (s *nnrfService) NFDiscoveryAMF(smContext *smf_context.SMContext, ctx context.Context) (
-	result models.SearchResult, localErr error,
+	result models.Nrf_NFDisc_SearchResult, localErr error,
 ) {
-	targetNfType := models.NrfNfManagementNfType_AMF
-	requesterNfType := models.NrfNfManagementNfType_SMF
-	request := &NFDiscovery.SearchNFInstancesRequest{
+	targetNfType := models.Nrf_NFMgmt_NFType_AMF
+	requesterNfType := models.Nrf_NFMgmt_NFType_SMF
+	request := &NFDisc.SearchNFInstancesRequest{
 		TargetNfType:       &targetNfType,
 		RequesterNfType:    &requesterNfType,
 		TargetNfInstanceId: &smContext.ServingNfId,
@@ -270,15 +270,15 @@ func (s *nnrfService) NFDiscoveryAMF(smContext *smf_context.SMContext, ctx conte
 	client := s.getNFDiscoveryClient(smfContext.NrfUri)
 	// Check data
 	res, localErr := client.NFInstancesStoreApi.SearchNFInstances(ctx, request)
-	if res != nil {
-		result = res.SearchResult
+	if res != nil && res.Nrf_NFDisc_SearchResult != nil {
+		result = *res.Nrf_NFDisc_SearchResult
 	}
 	return result, localErr
 }
 
 func (s *nnrfService) SendNFDiscoveryUDM() (*models.ProblemDetails, error) {
 	smfContext := s.consumer.Context()
-	ctx, pd, err := smfContext.GetTokenCtx(models.ServiceName_NNRF_DISC, models.NrfNfManagementNfType_NRF)
+	ctx, pd, err := smfContext.GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, models.Nrf_NFMgmt_NFType_NRF)
 	if err != nil {
 		return pd, err
 	}
@@ -289,8 +289,8 @@ func (s *nnrfService) SendNFDiscoveryUDM() (*models.ProblemDetails, error) {
 	switch err := localErr.(type) {
 	case openapi.GenericOpenAPIError:
 		switch errModel := err.Model().(type) {
-		case NFDiscovery.SearchNFInstancesError:
-			return &errModel.ProblemDetails, nil
+		case NFDisc.SearchNFInstancesError:
+			return errModel.ProblemDetails, nil
 		case error:
 			return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 		default:
@@ -305,9 +305,9 @@ func (s *nnrfService) SendNFDiscoveryUDM() (*models.ProblemDetails, error) {
 		}
 		smfContext.UDMProfile = result.NfInstances[0]
 
-		var client *SubscriberDataManagement.APIClient
+		var client *SDM.APIClient
 		for _, service := range smfContext.UDMProfile.NfServices {
-			if service.ServiceName == models.ServiceName_NUDM_SDM {
+			if service.ServiceName == models.Nrf_NFMgmt_ServiceName_NUDM_SDM {
 				client = s.consumer.nudmService.getSubscribeDataManagementClient(service.ApiPrefix)
 			}
 		}
@@ -323,7 +323,7 @@ func (s *nnrfService) SendNFDiscoveryUDM() (*models.ProblemDetails, error) {
 }
 
 func (s *nnrfService) SendNFDiscoveryPCF() (*models.ProblemDetails, error) {
-	ctx, pd, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_DISC, models.NrfNfManagementNfType_NRF)
+	ctx, pd, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, models.Nrf_NFMgmt_NFType_NRF)
 	if err != nil {
 		return pd, err
 	}
@@ -334,8 +334,8 @@ func (s *nnrfService) SendNFDiscoveryPCF() (*models.ProblemDetails, error) {
 	switch err := localErr.(type) {
 	case openapi.GenericOpenAPIError:
 		switch errModel := err.Model().(type) {
-		case NFDiscovery.SearchNFInstancesError:
-			return &errModel.ProblemDetails, nil
+		case NFDisc.SearchNFInstancesError:
+			return errModel.ProblemDetails, nil
 		case error:
 			return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 		default:
@@ -353,7 +353,7 @@ func (s *nnrfService) SendNFDiscoveryPCF() (*models.ProblemDetails, error) {
 }
 
 func (s *nnrfService) SendNFDiscoveryServingAMF(smContext *smf_context.SMContext) (*models.ProblemDetails, error) {
-	ctx, pd, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_DISC, models.NrfNfManagementNfType_NRF)
+	ctx, pd, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, models.Nrf_NFMgmt_NFType_NRF)
 	if err != nil {
 		return pd, err
 	}
@@ -364,8 +364,8 @@ func (s *nnrfService) SendNFDiscoveryServingAMF(smContext *smf_context.SMContext
 	switch err := localErr.(type) {
 	case openapi.GenericOpenAPIError:
 		switch errModel := err.Model().(type) {
-		case NFDiscovery.SearchNFInstancesError:
-			return &errModel.ProblemDetails, nil
+		case NFDisc.SearchNFInstancesError:
+			return errModel.ProblemDetails, nil
 		case error:
 			return openapi.ProblemDetailsSystemFailure(errModel.Error()), nil
 		default:
@@ -394,15 +394,15 @@ func (s *nnrfService) SendNFDiscoveryServingAMF(smContext *smf_context.SMContext
 // CHFSelection will select CHF for this SM Context
 func (s *nnrfService) CHFSelection(smContext *smf_context.SMContext) error {
 	// Send NFDiscovery for find CHF
-	targetNfType := models.NrfNfManagementNfType_CHF
-	requesterNfType := models.NrfNfManagementNfType_SMF
-	request := &NFDiscovery.SearchNFInstancesRequest{
+	targetNfType := models.Nrf_NFMgmt_NFType_CHF
+	requesterNfType := models.Nrf_NFMgmt_NFType_SMF
+	request := &NFDisc.SearchNFInstancesRequest{
 		TargetNfType:    &targetNfType,
 		RequesterNfType: &requesterNfType,
 		// Supi:            &smContext.Supi,
 	}
 
-	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_DISC, models.NrfNfManagementNfType_NRF)
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, models.Nrf_NFMgmt_NFType_NRF)
 	if err != nil {
 		return err
 	}
@@ -416,8 +416,8 @@ func (s *nnrfService) CHFSelection(smContext *smf_context.SMContext) error {
 	}
 
 	// Select CHF from available CHF
-	if res != nil && len(res.SearchResult.NfInstances) > 0 {
-		smContext.SelectedCHFProfile = res.SearchResult.NfInstances[0]
+	if res != nil && len(res.Nrf_NFDisc_SearchResult.NfInstances) > 0 {
+		smContext.SelectedCHFProfile = res.Nrf_NFDisc_SearchResult.NfInstances[0]
 		return nil
 	}
 	return fmt.Errorf("no CHF found in CHFSelection")
@@ -425,14 +425,14 @@ func (s *nnrfService) CHFSelection(smContext *smf_context.SMContext) error {
 
 // PCFSelection will select PCF for this SM Context
 func (s *nnrfService) PCFSelection(smContext *smf_context.SMContext) error {
-	ctx, _, errToken := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_DISC, "NRF")
+	ctx, _, errToken := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, "NRF")
 	if errToken != nil {
 		return errToken
 	}
 	// Send NFDiscovery for find PCF
-	targetNfType := models.NrfNfManagementNfType_PCF
-	requesterNfType := models.NrfNfManagementNfType_SMF
-	request := &NFDiscovery.SearchNFInstancesRequest{
+	targetNfType := models.Nrf_NFMgmt_NFType_PCF
+	requesterNfType := models.Nrf_NFMgmt_NFType_SMF
+	request := &NFDisc.SearchNFInstancesRequest{
 		TargetNfType:    &targetNfType,
 		RequesterNfType: &requesterNfType,
 	}
@@ -449,22 +449,22 @@ func (s *nnrfService) PCFSelection(smContext *smf_context.SMContext) error {
 	}
 
 	// Select PCF from available PCF
-	if res == nil || len(res.SearchResult.NfInstances) == 0 {
+	if res == nil || len(res.Nrf_NFDisc_SearchResult.NfInstances) == 0 {
 		return fmt.Errorf("no PCF found in PCFSelection")
 	}
-	smContext.SelectedPCFProfile = res.SearchResult.NfInstances[0]
+	smContext.SelectedPCFProfile = res.Nrf_NFDisc_SearchResult.NfInstances[0]
 
 	return nil
 }
 
 func (s *nnrfService) SearchNFInstances(
 	ctx context.Context,
-	targetNfType, requesterNfType models.NrfNfManagementNfType,
-	localVarOptionals *NFDiscovery.SearchNFInstancesRequest,
-) (*models.SearchResult, error) {
+	targetNfType, requesterNfType models.Nrf_NFMgmt_NFType,
+	localVarOptionals *NFDisc.SearchNFInstancesRequest,
+) (*models.Nrf_NFDisc_SearchResult, error) {
 	client := s.getNFDiscoveryClient(s.consumer.Context().NrfUri)
 
-	request := &NFDiscovery.SearchNFInstancesRequest{
+	request := &NFDisc.SearchNFInstancesRequest{
 		TargetNfType:    &targetNfType,
 		RequesterNfType: &requesterNfType,
 	}
@@ -474,5 +474,5 @@ func (s *nnrfService) SearchNFInstances(
 		return nil, err
 	}
 
-	return &res.SearchResult, err
+	return res.Nrf_NFDisc_SearchResult, err
 }
