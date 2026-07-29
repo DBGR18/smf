@@ -154,7 +154,10 @@ func (s *nnrfService) buildNfProfile(smfContext *smf_context.SMFContext) (
 		NfServices:    *smfProfile.NFServices,
 		SmfInfo:       smfProfile.SMFInfo,
 		SNssais:       sNssais,
-		PlmnList:      *smfProfile.PLMNList,
+	}
+	// plmnList is optional in the config, only set it when it is configured
+	if smfProfile.PLMNList != nil {
+		profile.PlmnList = *smfProfile.PLMNList
 	}
 	if smfContext.Locality != "" {
 		profile.Locality = smfContext.Locality
