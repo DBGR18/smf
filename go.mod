@@ -9,7 +9,7 @@ require (
 	github.com/free5gc/ngap v1.1.4-0.20260707055048-c26215fe47ef
 	github.com/free5gc/openapi v1.2.5-0.20260716090436-13797f3a9f13
 	github.com/free5gc/pfcp v1.1.2
-	github.com/free5gc/util v1.3.2
+	github.com/free5gc/util v1.3.3-0.20260806004242-cfe683dea97d
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/h2non/gock v1.2.0
@@ -81,4 +81,3 @@ require (
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
