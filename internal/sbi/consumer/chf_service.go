@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -157,13 +158,8 @@ func (s *nchfService) SendConvergedChargingRequest(
 		case error:
 			return nil, openapi.ProblemDetailsSystemFailure(err.Error()), nil
 		case nil:
-			// TODO(openapi#80): smContext.ChargingDataRef used to be parsed from
-			// the 201 Location header (TS 32.290). The regenerated client never
-			// reads that header on the success path -- ChargingdataPostResponse
-			// has no Location field, and only the 307/308 branches call
-			// Header.Get("Location") -- so the ref is unobtainable here.
-			// Left unset deliberately rather than fabricated; restore the
-			// original two-line parse once upstream exposes the header again.
+			chargingDataRef := strings.Split(rspPost.Location, "/")
+			smContext.ChargingDataRef = chargingDataRef[len(chargingDataRef)-1]
 			return rspPost.Chf_ConvCharging_ChargingDataResponse, nil, nil
 		default:
 			return nil, nil, openapi.ReportError("server no response")
