@@ -165,9 +165,9 @@ func (s *npcfService) SendSMPolicyAssociationUpdateByUERequestModification(
 		case nasie.OpCode_ModifyAddPktFilters:
 			ruleOp = models.Pcf_SMPolCtrl_RuleOperation_MODIFY_PCC_RULE_AND_ADD_PACKET_FILTERS
 		case nasie.OpCode_ModifyDelPktFilters:
-			ruleOp = models.Pcf_SMPolCtrl_RuleOperation_MODIFY__PCC_RULE_AND_DELETE_PACKET_FILTERS
+			ruleOp = models.Pcf_SMPolCtrl_RuleOperation_MODIFY_PCC_RULE_AND_DELETE_PACKET_FILTERS
 		case nasie.OpCode_ModifyReplaceAllPktFilters:
-			ruleOp = models.Pcf_SMPolCtrl_RuleOperation_MODIFY__PCC_RULE_AND_REPLACE_PACKET_FILTERS
+			ruleOp = models.Pcf_SMPolCtrl_RuleOperation_MODIFY_PCC_RULE_AND_REPLACE_PACKET_FILTERS
 		case nasie.OpCode_ModifyWoModifyingPktFilters:
 			ruleOp = models.Pcf_SMPolCtrl_RuleOperation_MODIFY_PCC_RULE_WITHOUT_MODIFY_PACKET_FILTERS
 		default:
