@@ -423,10 +423,12 @@ func RemoveSMContext(ref string) {
 	smContext.NrdcIndicator = false
 
 	smContextPool.Delete(ref)
-	// Only drop the canonical reference if it still points to this SM context. A newer
-	// SM context for the same UE and PDU session may already have taken over the name,
-	// and deleting it would leave that context unreachable, leaking its UE IP address.
-	canonicalRef.CompareAndDelete(canonicalName(smContext.Supi, smContext.PDUSessionID), ref)
+	// Identifier is the id NewSMContext stored the canonical reference under, so it is
+	// the only field guaranteed to rebuild the same name. Only drop the reference if it
+	// still points to this SM context: a newer SM context for the same UE and PDU
+	// session may already have taken over the name, and deleting it would leave that
+	// context unreachable, leaking its UE IP address.
+	canonicalRef.CompareAndDelete(canonicalName(smContext.Identifier, smContext.PDUSessionID), ref)
 	smContext.Log.Infof("smContext[%s] is deleted from pool", ref)
 }
 

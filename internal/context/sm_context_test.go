@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/smf/internal/context"
 )
 
@@ -19,20 +18,10 @@ func TestRemoveSMContextKeepsCanonicalRefOfNewerSMContext(t *testing.T) {
 		pduSessionID = int32(1)
 	)
 
-	newSMContextForSupi := func() *context.SMContext {
-		smContext := context.NewSMContext(supi, pduSessionID)
-		require.NotNil(t, smContext)
-		// HandlePDUSessionSMContextCreate attaches the create data right after
-		// NewSMContext; RemoveSMContext reads Supi out of it.
-		smContext.SmfPduSessionSmContextCreateData = &models.SmfPduSessionSmContextCreateData{
-			Supi:         supi,
-			PduSessionId: pduSessionID,
-		}
-		return smContext
-	}
-
-	oldSMContext := newSMContextForSupi()
-	newSMContext := newSMContextForSupi()
+	oldSMContext := context.NewSMContext(supi, pduSessionID)
+	require.NotNil(t, oldSMContext)
+	newSMContext := context.NewSMContext(supi, pduSessionID)
+	require.NotNil(t, newSMContext)
 	require.NotEqual(t, oldSMContext.Ref, newSMContext.Ref)
 
 	// NewSMContext has already handed the canonical name over to newSMContext.
