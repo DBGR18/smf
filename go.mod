@@ -5,11 +5,11 @@ go 1.26.2
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/davecgh/go-spew v1.1.1
-	github.com/free5gc/nas v1.2.4-0.20260707083822-348faf940c55
-	github.com/free5gc/ngap v1.1.4-0.20260707055048-c26215fe47ef
-	github.com/free5gc/openapi v1.2.5-0.20260810070107-542a2cceaa21
+	github.com/free5gc/nas v1.3.0
+	github.com/free5gc/ngap v1.2.0
+	github.com/free5gc/openapi v1.3.0
 	github.com/free5gc/pfcp v1.1.2
-	github.com/free5gc/util v1.3.3-0.20260806004242-cfe683dea97d
+	github.com/free5gc/util v1.4.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/h2non/gock v1.2.0
